@@ -76,6 +76,10 @@ databricks fs ls dbfs:/Volumes/alp_demo_catalog/acme_hr/landing/employees \
 L'upload passe par la Files API du SDK Databricks (profil `<your-profile>`) — aucun
 accès AWS requis.
 
+> **En atelier / dans le workspace** : plutôt que le script CLI, exécutez le notebook
+> `src/00-Utiles/01-Generate-HR-Data.py` (widgets `mode` = seed/increment, `employees`, `catalog`,
+> `schema`). Il écrit directement dans le Volume et garde le roster dans `.../landing/_state/`.
+
 ### 3. Déployer et lancer le pipeline LDP
 ```bash
 databricks bundle validate -t dev --profile <your-profile>
@@ -144,7 +148,9 @@ acme_hr_sdp_demo/
 ├── scripts/
 │   └── generate-hr-data.py            # générateur HR synthétique -> Volume UC
 └── src/
-    ├── 00-Utiles/00-MasterData-build.py
+    ├── 00-Utiles/
+    │   ├── 00-MasterData-build.py     # setup : schémas + Volume + référentiel departments
+    │   └── 01-Generate-HR-Data.py     # générateur en NOTEBOOK (widgets, écrit dans le Volume)
     └── 01-HR_DLT/
         ├── 00-Data-Sources/           # bronze (Auto Loader)
         ├── 01-Employees/              # silver + gold (SCD1/SCD2)
