@@ -3,12 +3,12 @@
 # MAGIC # HR Common Base — Setup (schemas, Volume) + Build du master data (référentiel Départements)
 # MAGIC
 # MAGIC À exécuter **une fois** avant le pipeline LDP. Crée les schemas, le **Volume UC** qui reçoit les
-# MAGIC données brutes HR (déposées par `scripts/generate-hr-data.py`) et le référentiel stable
+# MAGIC données brutes HR (déposées par le notebook `01-Generate-HR-Data.py`) et le référentiel stable
 # MAGIC `departments` (joint en couche silver). Table de référentiel (master data) jointe en couche silver.
 # MAGIC
 # MAGIC > Le catalog `alp_demo_catalog` existe déjà (créé côté votre workspace Databricks).
 # MAGIC > Le `department_id` ici doit correspondre à celui généré dans les extraits employés
-# MAGIC > (`scripts/generate-hr-data.py`).
+# MAGIC > (`01-Generate-HR-Data.py`).
 
 # COMMAND ----------
 

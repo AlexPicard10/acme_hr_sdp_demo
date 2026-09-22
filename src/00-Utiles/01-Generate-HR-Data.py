@@ -2,8 +2,8 @@
 # MAGIC %md
 # MAGIC # Générateur de données HR synthétiques — notebook (démo SDP "Common Base")
 # MAGIC
-# MAGIC Version **notebook** du générateur (équivalent de `scripts/generate-hr-data.py`), pensée pour
-# MAGIC être exécutée **directement dans le workspace** (Git folder) — support de formation.
+# MAGIC Générateur de données HR synthétiques, pensé pour être exécuté **directement dans le workspace**
+# MAGIC (Git folder) — support de formation.
 # MAGIC
 # MAGIC - **Widgets** au lieu d'arguments CLI (`mode`, `employees`, `catalog`, `schema`).
 # MAGIC - Écrit les extraits JSONL **directement dans le Volume UC** (`.../landing/employees|absences/`).

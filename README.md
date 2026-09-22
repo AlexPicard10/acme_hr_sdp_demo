@@ -55,7 +55,8 @@ données brutes dans le Volume `alp_demo_catalog.acme_hr.landing`. Tables préfi
 
 - Databricks CLI ≥ 1.0 authentifié sur le profil **`<your-profile>`**.
 - Droits `ALL_PRIVILEGES` (ou CREATE SCHEMA / VOLUME) sur le catalog **`alp_demo_catalog`**.
-- Python 3.11+ : `pip install -r requirements.txt` (Faker + databricks-sdk, pour le générateur).
+- La génération de données tourne **dans le workspace** (notebook `01-Generate-HR-Data.py`, qui
+  installe Faker via `%pip`) — aucune dépendance à installer en local.
 
 > Le stockage est un **Volume Unity Catalog** — plus aucun bucket S3, rôle IAM ou credential à
 > provisionner. Le Volume vit dans le compte du votre workspace Databricks et est gouverné par UC.
@@ -68,17 +69,16 @@ schéma `acme_hr`, le **Volume** `alp_demo_catalog.acme_hr.landing` (sous-dossie
 `absences/`) qui recevra les extraits bruts, et le référentiel `alp_demo_catalog.acme_hr.departments`.
 
 ### 2. Générer et charger les données brutes dans le Volume
-```bash
-python scripts/generate-hr-data.py --seed            # charge initiale (~2500 employés + 12 mois d'absences)
-databricks fs ls dbfs:/Volumes/alp_demo_catalog/acme_hr/landing/employees \
-  --profile <your-profile>
-```
-L'upload passe par la Files API du SDK Databricks (profil `<your-profile>`) — aucun
-accès AWS requis.
+Exécuter le notebook `src/00-Utiles/01-Generate-HR-Data.py` dans le workspace, avec les widgets :
+`mode` = **`seed`** (charge initiale : ~2500 employés + 12 mois d'absences), `employees`, `catalog`,
+`schema`. Il écrit les extraits JSONL **directement dans le Volume** (`.../landing/employees|absences/`)
+et persiste le roster dans `.../landing/_state/roster.json` (GID stables entre les runs — indispensable
+pour démontrer le CDC / SCD).
 
-> **En atelier / dans le workspace** : plutôt que le script CLI, exécutez le notebook
-> `src/00-Utiles/01-Generate-HR-Data.py` (widgets `mode` = seed/increment, `employees`, `catalog`,
-> `schema`). Il écrit directement dans le Volume et garde le roster dans `.../landing/_state/`.
+```bash
+# Vérifier le dépôt des fichiers dans le Volume (depuis le terminal, optionnel)
+databricks fs ls dbfs:/Volumes/alp_demo_catalog/acme_hr/landing/employees --profile <your-profile>
+```
 
 ### 3. Déployer et lancer le pipeline LDP
 ```bash
@@ -92,13 +92,15 @@ Lancer les requêtes de `src/01-HR_DLT/03-Explorations/hr_exploration.sql` sur u
 (streaming tables, SCD1/SCD2, materialized views, view).
 
 ### 5. Démontrer l'incrémental + le CDC
+Relancer le notebook `01-Generate-HR-Data.py` avec le widget `mode` = **`increment`** : il produit un
+nouvel extrait employés (mobilités / embauches / départs) daté d'un `extract_ts` plus récent, puis
+relancer le pipeline (run **normal**, pas full-refresh) :
 ```bash
-python scripts/generate-hr-data.py --increment       # nouvel extrait avec mobilités/embauches/départs
 databricks bundle run hr_pipeline_dlt -t dev --profile <your-profile>
 ```
 Seuls les nouveaux fichiers sont ingérés (Auto Loader, directory-listing sur le Volume).
 `gold_employees_current` reflète l'état à jour (SCD1) ; `gold_employees_history` accumule
-l'historique des mobilités (SCD2).
+l'historique des mobilités (SCD2, ordonné par `extract_ts`).
 
 ## CI/CD (GitHub Actions)
 
@@ -139,18 +141,15 @@ databricks bundle deploy   --target prod --profile <your-profile>   # ce que fai
 ```
 acme_hr_sdp_demo/
 ├── databricks.yml                     # bundle DAB clean (variables, targets dev/prod)
-├── requirements.txt / pyproject.toml
 ├── .github/workflows/
 │   ├── validate.yml                   # CI : bundle validate sur PR
 │   └── deploy.yml                     # CD : bundle deploy sur merge main
 ├── resources/
 │   └── hr_pipeline_dlt.pipeline.yml   # pipeline SDP serverless
-├── scripts/
-│   └── generate-hr-data.py            # générateur HR synthétique -> Volume UC
 └── src/
     ├── 00-Utiles/
     │   ├── 00-MasterData-build.py     # setup : schémas + Volume + référentiel departments
-    │   └── 01-Generate-HR-Data.py     # générateur en NOTEBOOK (widgets, écrit dans le Volume)
+    │   └── 01-Generate-HR-Data.py     # générateur HR synthétique en NOTEBOOK (widgets, écrit dans le Volume)
     └── 01-HR_DLT/
         ├── 00-Data-Sources/           # bronze (Auto Loader)
         ├── 01-Employees/              # silver + gold (SCD1/SCD2)
