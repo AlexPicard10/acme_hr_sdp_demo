@@ -9,10 +9,7 @@
 bundle:
   name: acme_hr_sdp_demo
 
-sync:
-  exclude:
-    - data/
-
+# NB : la synchro du bundle respecte déjà .gitignore (donc data/ est exclu automatiquement).
 include:
   - resources/*.yml
   - resources/*/*.yml
