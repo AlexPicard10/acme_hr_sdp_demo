@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # MAGIC %md
 # MAGIC # Générateur de données HR synthétiques — notebook (démo SDP "Common Base")
 # MAGIC
@@ -29,7 +33,7 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 dbutils.widgets.dropdown("mode", "seed", ["seed", "increment"], "Mode")
-dbutils.widgets.text("employees", "2500", "Nb employés (seed)")
+dbutils.widgets.text("employees", "50000", "Nb employés (seed)")
 dbutils.widgets.text("catalog", "alp_demo_catalog", "Catalog")
 dbutils.widgets.text("schema", "acme_hr", "Schema")
 
