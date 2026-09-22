@@ -33,16 +33,18 @@ GROUP BY age_bracket ORDER BY age_bracket;
 
 -- COMMAND ----------
 
-SELECT employee_gid, department_id, contract_type, job_title, __START_AT, __END_AT
-FROM alp_demo_catalog.acme_hr.gold_employees_history
-WHERE employee_gid = 'GID0000001'
-ORDER BY __START_AT;
 
 -- Employés ayant connu au moins un changement historisé
-SELECT count(*) AS employes_avec_historique FROM (
-  SELECT employee_gid FROM alp_demo_catalog.acme_hr.gold_employees_history
-  GROUP BY employee_gid HAVING count(*) > 1
-);
+SELECT employee_gid FROM alp_demo_catalog.acme_hr.gold_employees_history
+GROUP BY employee_gid HAVING count(*) > 1
+
+-- COMMAND ----------
+
+SELECT employee_gid, department_id, contract_type, job_title, __START_AT, __END_AT
+FROM alp_demo_catalog.acme_hr.gold_employees_history
+WHERE employee_gid = 'GID0041944'
+ORDER BY __START_AT;
+
 
 -- COMMAND ----------
 
