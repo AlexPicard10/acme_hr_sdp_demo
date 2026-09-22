@@ -1,7 +1,7 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC ## 6 / Agrégats de consommation — Materialized Views
--- MAGIC #### Équivalent des datasets de sortie Dataiku exposés aux analystes / dashboards.
+-- MAGIC #### Datasets de sortie (agrégats) exposés aux analystes / dashboards.
 -- MAGIC Une **Materialized View** stocke physiquement le résultat d'une agrégation et se rafraîchit
 -- MAGIC (incrémentalement sur serverless). On lit les tables gold/silver en **batch** (pas de `STREAM`)
 -- MAGIC car ce sont des agrégats sur l'ensemble des données. On conserve les dimensions clés

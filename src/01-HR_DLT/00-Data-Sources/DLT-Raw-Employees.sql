@@ -1,19 +1,19 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC # HR "Common Base" — Lakeflow Declarative Pipeline (LDP)
--- MAGIC ### Asset d'enablement — migration Dataiku ➜ Databricks (équipes HR (société fictive ACME))
+-- MAGIC ### Asset d'enablement — montée en compétence des équipes HR Data sur Databricks SDP (société fictive ACME)
 -- MAGIC
--- MAGIC Ce pipeline reproduit le pattern du **socle commun HR** : les extraits HR (type CESAM/SESAM)
+-- MAGIC Ce pipeline construit le **socle commun HR** : les extraits HR (type CESAM/SESAM)
 -- MAGIC atterrissent dans un **Volume Unity Catalog** (un dossier par dataset), sont ingérés en **Auto Loader**,
--- MAGIC puis consolidés en une table employés unique — l'équivalent Databricks du flow Dataiku.
+-- MAGIC puis consolidés en une table employés unique.
 -- MAGIC
--- MAGIC | Zone Dataiku | Équivalent Lakeflow (LDP) |
+-- MAGIC | Étape du socle | Fonctionnalité Lakeflow (SDP) |
 -- MAGIC |---|---|
--- MAGIC | Dataset d'entrée (CDH / S3) | **Streaming Table** + **Auto Loader** (`STREAM read_files`) — couche *bronze* |
--- MAGIC | Recipes *Prepare* (nettoyage, colonnes calculées) | **Streaming Table** + **Expectations** — couche *silver* |
--- MAGIC | Recipe *Join* (référentiels) | jointure SQL sur le master data |
--- MAGIC | Zone *Transform/Rename* + dédup | **Auto CDC** (SCD1/SCD2) — couche *gold* |
--- MAGIC | Datasets de sortie / consommation | **Materialized View** + **View** (Unity Catalog) |
+-- MAGIC | Ingestion des extraits (Volume UC) | **Streaming Table** + **Auto Loader** (`STREAM read_files`) — couche *bronze* |
+-- MAGIC | Nettoyage, typage, colonnes calculées | **Streaming Table** + **Expectations** — couche *silver* |
+-- MAGIC | Jointure référentiel | jointure SQL sur le master data |
+-- MAGIC | Déduplication / historisation | **Auto CDC** (SCD1/SCD2) — couche *gold* |
+-- MAGIC | Sortie / consommation | **Materialized View** + **View** (Unity Catalog) |
 
 -- COMMAND ----------
 

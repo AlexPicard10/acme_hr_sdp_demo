@@ -1,7 +1,7 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC ## 2 / Préparation & Qualité — Employés (Streaming Table + Expectations)
--- MAGIC #### Équivalent des recipes *Prepare* de Dataiku : typage, colonnes calculées, contrôles qualité.
+-- MAGIC #### Préparation & qualité : typage, colonnes calculées, contrôles qualité (Expectations).
 -- MAGIC Les **Expectations** (`CONSTRAINT ... EXPECT`) déclarent les règles qualité directement dans le
 -- MAGIC pipeline : lignes non conformes écartées (`DROP ROW`), échec bloquant sur clé manquante
 -- MAGIC (`FAIL UPDATE`), ou simple avertissement. On y recrée aussi les **colonnes calculées** du socle

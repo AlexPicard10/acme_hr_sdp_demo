@@ -1,29 +1,30 @@
-# ACME HR "Common Base" — Démo Data + SDP (enablement Dataiku ➜ Databricks)
+# ACME HR "Common Base" — Démo Data + Spark Declarative Pipelines (SDP)
 
-Asset de démonstration pour faire **monter en compétence les équipes HR (société fictive ACME)** sur Databricks
-dans le cadre du **Dataiku Sunset**. Il reproduit, de bout en bout et avec des **données HR
-synthétiques**, le pattern du pilote **socle commun HR** (*Common Base*) :
+Asset de démonstration pour **faire monter en compétence les équipes HR Data sur Databricks et les
+Spark Declarative Pipelines (SDP)**. Il construit, de bout en bout et avec des **données HR
+synthétiques**, un **socle commun HR** (*Common Base*) :
 
 > extraits HR (type CESAM/SESAM) déposés dans un **Volume Unity Catalog** → ingestion **Auto Loader**
 > → **Spark Declarative Pipeline** (bronze → silver → gold) → **Materialized Views** + **View**, le
 > tout gouverné par **Unity Catalog**, déployé par un **Databricks Asset Bundle** et livré en **CI/CD**.
 
-C'est l'équivalent Databricks d'un flow Dataiku, pensé comme support d'atelier.
+Pensé comme **support d'atelier / d'enablement** : chaque étape est annotée et illustre une
+fonctionnalité SDP dans un scénario métier HR réaliste.
 
 > **SDP** (Spark Declarative Pipelines) = **LDP** (Lakeflow Declarative Pipelines), anciennement DLT —
 > termes interchangeables.
 
-## Ce que la démo illustre (fonctionnalités LDP)
+## Ce que la démo illustre (fonctionnalités SDP)
 
-| Fonctionnalité | Où | Équivalent Dataiku |
+| Fonctionnalité SDP | Où | Rôle dans le socle (bronze→silver→gold) |
 |---|---|---|
-| **Streaming Table** + **Auto Loader** (`STREAM read_files`) | `bronze_employees`, `bronze_absences` | Dataset d'entrée (CDH / Volume) |
-| **Expectations** (contrôles qualité déclaratifs) | `silver_employees`, `silver_absences` | Recipes de préparation + checks |
-| Colonnes calculées (`age_bracket`, `seniority_years`) + join référentiel | `silver_employees` | Recipe *Prepare* + *Join* |
-| **Auto CDC — SCD Type 1** (dernière version / employé) | `gold_employees_current` | Zone dédup / dernière valeur |
-| **Auto CDC — SCD Type 2** (historique mobilité) | `gold_employees_history` | Historisation |
-| **Materialized View** (agrégats stockés) | `gold_headcount_by_department`, `gold_absenteeism_by_department` | Datasets de sortie agrégés |
-| **View** (calcul à la volée, UC) | `gold_hr_common_base` | Dataset exposé aux consommateurs |
+| **Streaming Table** + **Auto Loader** (`STREAM read_files`) | `bronze_employees`, `bronze_absences` | Ingestion des données brutes — bronze |
+| **Expectations** (contrôles qualité déclaratifs) | `silver_employees`, `silver_absences` | Contrôles qualité — silver |
+| Colonnes calculées (`age_bracket`, `seniority_years`) + join référentiel | `silver_employees` | Préparation & enrichissement — silver |
+| **Auto CDC — SCD Type 1** (dernière version / employé) | `gold_employees_current` | Déduplication / dernière valeur — gold |
+| **Auto CDC — SCD Type 2** (historique mobilité) | `gold_employees_history` | Historisation — gold |
+| **Materialized View** (agrégats stockés) | `gold_headcount_by_department`, `gold_absenteeism_by_department` | Agrégats de consommation — gold |
+| **View** (calcul à la volée, UC) | `gold_hr_common_base` | Exposition aux consommateurs — gold |
 
 Scénario : **Employés + Absences + Départements** (effectifs, pyramide des âges, mixité, absentéisme).
 
@@ -127,7 +128,7 @@ databricks bundle deploy   --target prod --profile <your-profile>   # ce que fai
 ## Aller plus loin (optionnel)
 - **Dashboard AI/BI** sur `gold_headcount_by_department`, `gold_absenteeism_by_department` et
   `gold_hr_common_base` (effectifs par BU, pyramide des âges, taux d'absentéisme par mois/type).
-- **Job / Workflow** planifié remplaçant le scénario Dataiku (schedule + notifications).
+- **Job / Workflow** planifié pour orchestrer le pipeline (schedule + notifications).
 - Ajouter d'autres sources HR (paie, formation) en réutilisant le même squelette bronze→silver→gold.
 
 ## Structure

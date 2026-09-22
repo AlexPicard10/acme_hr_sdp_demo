@@ -3,7 +3,7 @@ name = "acme_hr_ldp_demo"
 version = "0.0.1"
 authors = [{ name = "alexandre.picard@databricks.com" }]
 requires-python = ">= 3.11"
-description = "Asset de démo Data + LDP (HR Common Base) — enablement HR / migration Dataiku."
+description = "Asset de démo Data + LDP (HR Common Base) — montée en compétence des équipes HR Data sur Databricks SDP."
 dependencies = [
     "Faker>=30.0.0",
     "boto3>=1.34.0",
