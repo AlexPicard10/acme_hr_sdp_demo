@@ -47,6 +47,7 @@ FROM (
   SELECT
     employee_gid,
     to_date(extract_date)                                             AS extract_date,
+    to_timestamp(extract_ts)                                          AS extract_ts,  -- clé de séquence CDC (monotone)
     initcap(first_name)                                               AS first_name,
     upper(last_name)                                                  AS last_name,
     gender,

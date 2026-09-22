@@ -143,9 +143,15 @@ def mutate_roster(roster):
 # ----------------------------------------------------------------------------------------------
 # Génération des extraits
 # ----------------------------------------------------------------------------------------------
-def employee_extract(roster, extract_date):
-    """Un enregistrement master par employé, daté (extract_date = clé de séquence CDC)."""
-    return [dict(emp, extract_date=extract_date) for emp in roster]
+def employee_extract(roster, extract_date, extract_ts):
+    """Un enregistrement master par employé.
+
+    - `extract_date` : jour métier de l'extrait (DATE, pour l'affichage).
+    - `extract_ts`   : instant précis de l'extraction (TIMESTAMP) = **clé de séquence CDC**.
+      On séquence le CDC par un timestamp monotone (et non par la date) pour que deux extraits
+      produits le MÊME jour restent strictement ordonnés (indispensable en atelier).
+    """
+    return [dict(emp, extract_date=extract_date, extract_ts=extract_ts) for emp in roster]
 
 
 def absence_events(roster, start, end, n_events):
@@ -234,13 +240,14 @@ def main():
 
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     today = dt.date.today().isoformat()
+    extract_ts = dt.datetime.now().isoformat(timespec="microseconds")  # clé de séquence CDC (monotone)
 
     if args.seed:
         print(f"[SEED] Génération de {args.employees} employés + historique d'absences…")
         roster = build_roster(args.employees)
         save_state(roster)
 
-        emp_file = write_jsonl(employee_extract(roster, today), "employees", f"employees_{today}.json")
+        emp_file = write_jsonl(employee_extract(roster, today, extract_ts), "employees", f"employees_{today}_{ts}.json")
         n_abs = args.employees * 3  # ~3 absences/employé sur l'année
         abs_records = absence_events(roster, dt.date.today() - dt.timedelta(days=365), dt.date.today(), n_abs)
         abs_file = write_jsonl(abs_records, "absences", f"absences_seed_{ts}.json")
@@ -250,7 +257,7 @@ def main():
         roster = mutate_roster(load_state())
         save_state(roster)
 
-        emp_file = write_jsonl(employee_extract(roster, today), "employees", f"employees_{today}_{ts}.json")
+        emp_file = write_jsonl(employee_extract(roster, today, extract_ts), "employees", f"employees_{today}_{ts}.json")
         abs_records = absence_events(roster, dt.date.today() - dt.timedelta(days=14), dt.date.today(), 200)
         abs_file = write_jsonl(abs_records, "absences", f"absences_{ts}.json")
 
