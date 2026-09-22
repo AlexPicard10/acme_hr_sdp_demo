@@ -36,11 +36,14 @@ dbutils.widgets.dropdown("mode", "seed", ["seed", "increment"], "Mode")
 dbutils.widgets.text("employees", "50000", "Nb employés (seed)")
 dbutils.widgets.text("catalog", "alp_demo_catalog", "Catalog")
 dbutils.widgets.text("schema", "acme_hr", "Schema")
+# Injecter quelques enregistrements volontairement non conformes pour illustrer les Expectations silver.
+dbutils.widgets.dropdown("bad_records", "no", ["no", "yes"], "Injecter des enreg. non conformes ?")
 
 mode = dbutils.widgets.get("mode")
 n_employees = int(dbutils.widgets.get("employees"))
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
+inject_bad = dbutils.widgets.get("bad_records") == "yes"
 
 VOLUME_ROOT = f"/Volumes/{catalog}/{schema}/landing"
 STATE_PATH = f"{VOLUME_ROOT}/_state/roster.json"
@@ -48,7 +51,7 @@ print(f"mode={mode} | employees={n_employees} | cible={VOLUME_ROOT}")
 
 # COMMAND ----------
 
-# MAGIC %md ## Logique de génération (identique au script CLI — Faker fr_FR, seed fixe)
+# MAGIC %md ## Logique de génération (Faker fr_FR, seed fixe)
 
 # COMMAND ----------
 
@@ -180,6 +183,69 @@ def absence_events(roster, start, end, n_events):
 
 # COMMAND ----------
 
+# MAGIC %md ## Enregistrements non conformes (pour démontrer les Expectations)
+# MAGIC Chaque ligne viole **une** contrainte silver, pour voir les métriques de qualité se remplir
+# MAGIC (lignes `DROP ROW` écartées, contraintes `warn` conservées mais comptées).
+# MAGIC
+# MAGIC > On **n'injecte pas** de violation des contraintes `FAIL UPDATE` (`valid_gid` côté employés,
+# MAGIC > `valid_absence_id` côté absences) : elles feraient **échouer tout le pipeline**, ce qui n'est
+# MAGIC > pas le but ici. Pour démontrer un échec bloquant, l'injecter volontairement et à part.
+
+# COMMAND ----------
+
+def bad_employees(extract_date, extract_ts):
+    """6 employés volontairement non conformes (une contrainte violée par ligne)."""
+    today = dt.date.today()
+    base = {
+        "first_name": "Test", "last_name": "Qualite", "gender": "F",
+        "department_id": "D001", "job_title": "Analyste", "contract_type": "CDI",
+        "work_location": "Paris La Défense", "manager_gid": "GID0000001",
+        "email": "bad.record@acme-demo.com", "fte": 1.0, "status": "Active",
+        "extract_date": extract_date, "extract_ts": extract_ts,
+    }
+    return [
+        # plausible_age (trop jeune, ~10 ans) -> DROP ROW
+        {**base, "employee_gid": "GID9990001",
+         "birth_date": (today - dt.timedelta(days=10 * 365)).isoformat(), "hire_date": today.isoformat()},
+        # plausible_age (trop âgé, ~81 ans ; né en 1945 donc valid_birth_date reste OK) -> DROP ROW
+        {**base, "employee_gid": "GID9990002", "birth_date": "1945-01-01", "hire_date": "1965-01-01"},
+        # valid_birth_date (birth_date NULL) -> DROP ROW
+        # (une date < 1940 déclencherait AUSSI plausible_age ; NULL isole la contrainte)
+        {**base, "employee_gid": "GID9990003", "birth_date": None, "hire_date": "1955-01-01"},
+        # valid_hire_date (embauché avant la naissance) -> DROP ROW
+        {**base, "employee_gid": "GID9990004", "birth_date": "1990-01-01", "hire_date": "1985-01-01"},
+        # known_department (département inconnu -> department_name NULL après join) -> WARN
+        {**base, "employee_gid": "GID9990005", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
+         "department_id": "D999"},
+        # valid_contract (type hors liste) -> WARN
+        {**base, "employee_gid": "GID9990006", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
+         "contract_type": "Freelance"},
+    ]
+
+
+def bad_absences():
+    """4 absences volontairement non conformes (hors valid_absence_id qui est FAIL UPDATE)."""
+    y = dt.date.today().year
+    base = {"employee_gid": "GID0000001", "absence_type": "Maladie",
+            "event_timestamp": dt.datetime.now().isoformat()}
+    return [
+        # valid_employee (employee_gid NULL) -> DROP ROW
+        {**base, "absence_id": f"ABS-BAD-{y}-00000001", "employee_gid": None,
+         "start_date": f"{y}-01-10", "end_date": f"{y}-01-12", "days": 3},
+        # valid_dates (end_date avant start_date) -> DROP ROW
+        {**base, "absence_id": f"ABS-BAD-{y}-00000002",
+         "start_date": f"{y}-01-20", "end_date": f"{y}-01-10", "days": 3},
+        # positive_days (days = 0) -> DROP ROW
+        {**base, "absence_id": f"ABS-BAD-{y}-00000003",
+         "start_date": f"{y}-01-10", "end_date": f"{y}-01-10", "days": 0},
+        # known_type (absence_type NULL) -> WARN
+        {**base, "absence_id": f"ABS-BAD-{y}-00000004", "absence_type": None,
+         "start_date": f"{y}-01-10", "end_date": f"{y}-01-12", "days": 3},
+    ]
+
+
+# COMMAND ----------
+
 # MAGIC %md ## I/O — écriture directe dans le Volume UC (pas d'upload SDK)
 
 # COMMAND ----------
@@ -222,17 +288,26 @@ if mode == "seed":
     print(f"[SEED] {n_employees} employés + historique d'absences (12 mois)…")
     roster = build_roster(n_employees)
     save_state(roster)
-    write_jsonl(employee_extract(roster, today, extract_ts), "employees", f"employees_{today}_{ts}.json")
+    emp_records = employee_extract(roster, today, extract_ts)
     abs_records = absence_events(roster, dt.date.today() - dt.timedelta(days=365), dt.date.today(),
                                  n_employees * 3)
-    write_jsonl(abs_records, "absences", f"absences_seed_{ts}.json")
 else:  # increment
     print("[INCREMENT] Nouvel extrait employés (changements) + nouvelles absences…")
     roster = mutate_roster(load_state())
     save_state(roster)
-    write_jsonl(employee_extract(roster, today, extract_ts), "employees", f"employees_{today}_{ts}.json")
+    emp_records = employee_extract(roster, today, extract_ts)
     abs_records = absence_events(roster, dt.date.today() - dt.timedelta(days=14), dt.date.today(), 200)
-    write_jsonl(abs_records, "absences", f"absences_{ts}.json")
+
+# Optionnel : quelques enregistrements non conformes pour illustrer les Expectations silver.
+if inject_bad:
+    bad_emp, bad_abs = bad_employees(today, extract_ts), bad_absences()
+    emp_records += bad_emp
+    abs_records += bad_abs
+    print(f"[BAD RECORDS] +{len(bad_emp)} employés et +{len(bad_abs)} absences non conformes injectés.")
+
+# Noms de fichiers cohérents : <dataset>_<mode>_<ts>.json (le ts contient déjà la date).
+write_jsonl(emp_records, "employees", f"employees_{mode}_{ts}.json")
+write_jsonl(abs_records, "absences", f"absences_{mode}_{ts}.json")
 
 print("\nTerminé. Relancez le pipeline pour ingérer les nouveaux fichiers (Auto Loader).")
 
