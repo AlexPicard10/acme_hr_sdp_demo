@@ -1,0 +1,16 @@
+.databricks/
+build/
+dist/
+__pycache__/
+*.egg-info
+.venv/
+scratch/**
+!scratch/README.md
+data/
+# Handoff interne — non publié (contient des détails workspace/infra)
+CLAUDE.md
+hr-venv/
+.isaac/
+.vscode/
+__builtins__.pyi
+typings/

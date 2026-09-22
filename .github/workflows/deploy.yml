@@ -1,0 +1,37 @@
+name: deploy
+
+# CD — déploie le bundle en production à chaque merge sur main.
+# Le pipeline SDP est (re)déployé ; il peut ensuite être lancé (manuellement ou planifié).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: bundle deploy (prod)
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Validate bundle
+        run: databricks bundle validate --target prod
+
+      - name: Deploy bundle
+        run: databricks bundle deploy --target prod
+
+      # Optionnel : lancer le pipeline juste après le déploiement (décommenter si souhaité).
+      # - name: Run pipeline
+      #   run: databricks bundle run hr_pipeline_dlt --target prod

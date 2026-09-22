@@ -1,0 +1,50 @@
+# Databricks Asset Bundle — ACME HR "Common Base" SDP demo
+# Démo Data + Spark Declarative Pipelines (SDP / Lakeflow Declarative Pipelines) pour l'enablement
+# des équipes HR (société fictive ACME) dans le cadre de la migration Dataiku ➜ Databricks.
+#
+#   Volume UC (données brutes HR) ─► Auto Loader ─► SDP bronze→silver→gold ─► Materialized Views + View
+#   gouverné par Unity Catalog, déployé par ce bundle, livré en CI/CD (voir .github/workflows/).
+#
+# https://docs.databricks.com/dev-tools/bundles/index.html
+bundle:
+  name: acme_hr_sdp_demo
+
+sync:
+  exclude:
+    - data/
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+variables:
+  catalog:
+    default: "alp_demo_catalog"
+  # Un schéma unique par démo (alp_demo_catalog accueillera d'autres démos).
+  schema:
+    default: "acme_hr"
+  master_data_schema:
+    default: "alp_demo_catalog.acme_hr"
+  # Données brutes HR déposées dans un Volume Unity Catalog (un dossier par dataset — voir README).
+  employees_path:
+    default: "/Volumes/alp_demo_catalog/acme_hr/landing/employees"
+  absences_path:
+    default: "/Volumes/alp_demo_catalog/acme_hr/landing/absences"
+  dlt_development_mode:
+    default: true
+
+# Le host du workspace n'est PAS codé ici : il provient du profil CLI (`--profile <nom>`)
+# ou de la variable d'env DATABRICKS_HOST. Adaptez `catalog` ci-dessus à votre workspace.
+targets:
+  # --- dev : itération locale + validation CI (pull requests) ---
+  dev:
+    mode: development
+    default: true
+    variables:
+      dlt_development_mode: true
+
+  # --- prod : déploiement CD (merge sur main) ---
+  prod:
+    mode: production
+    variables:
+      dlt_development_mode: false

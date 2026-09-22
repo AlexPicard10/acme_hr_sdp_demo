@@ -1,0 +1,4 @@
+# Dépendances pour le générateur de données HR synthétiques (scripts/generate-hr-data.py).
+Faker>=30.0.0
+# Upload des extraits dans le Volume Unity Catalog (Files API).
+databricks-sdk>=0.46.0

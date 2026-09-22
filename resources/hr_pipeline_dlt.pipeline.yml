@@ -1,0 +1,23 @@
+resources:
+  pipelines:
+    hr_pipeline_dlt:
+      name: HR_CommonBase_Pipeline_LDP_${bundle.target}
+      # Ces valeurs sont lisibles dans le code SQL via ${nom} (spark.conf).
+      configuration:
+        "master_data_schema": ${var.master_data_schema}
+        "employees_path": ${var.employees_path}
+        "absences_path": ${var.absences_path}
+      libraries:
+        - glob:
+            include: ../src/01-HR_DLT/00-Data-Sources/**
+        - glob:
+            include: ../src/01-HR_DLT/01-Employees/**
+        - glob:
+            include: ../src/01-HR_DLT/02-Absences/**
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      channel: CURRENT
+      development: ${var.dlt_development_mode}
+      photon: true
+      serverless: true
+      root_path: ../src/01-HR_DLT

@@ -1,0 +1,26 @@
+name: validate
+
+# CI — valide le bundle sur chaque pull request vers main.
+# Vérifie que databricks.yml + les ressources (pipeline SDP) sont cohérents avant merge.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: bundle validate (dev)
+    runs-on: ubuntu-latest
+    env:
+      # Auth machine-to-machine via service principal OAuth (secrets du repo/organisation).
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Validate bundle
+        run: databricks bundle validate --target dev
