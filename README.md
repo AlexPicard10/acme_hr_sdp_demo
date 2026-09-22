@@ -30,6 +30,8 @@ Scénario : **Employés + Absences + Départements** (effectifs, pyramide des â
 
 ## Architecture
 
+![Architecture du socle commun RH — Volume UC → Auto Loader → bronze → silver (Expectations) → gold (Auto CDC SCD1/SCD2, Materialized Views, View) → consommation gouvernée par Unity Catalog](docs/architecture.png)
+
 ```
 Volume UC  /Volumes/alp_demo_catalog/acme_hr/landing/
    ├── employees/   extraits master employés (JSONL, GID stables)
