@@ -30,8 +30,8 @@ SELECT
   d.cost_center,
   -- Colonne calculée du socle commun : tranche d'âge dérivée (CASE WHEN, comme une recipe Prepare)
   CASE
-    WHEN b.age < 25 THEN '<25'
-    WHEN b.age < 35 THEN '25-34'
+    WHEN b.age < 20 THEN '<20'
+    WHEN b.age < 35 THEN '20-34'
     WHEN b.age < 45 THEN '35-44'
     WHEN b.age < 55 THEN '45-54'
     ELSE '55+'
