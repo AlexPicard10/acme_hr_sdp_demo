@@ -36,8 +36,9 @@ dbutils.widgets.dropdown("mode", "seed", ["seed", "increment"], "Mode")
 dbutils.widgets.text("employees", "50000", "Nb employés (seed)")
 dbutils.widgets.text("catalog", "alp_demo_catalog", "Catalog")
 dbutils.widgets.text("schema", "acme_hr", "Schema")
-# Injecter quelques enregistrements volontairement non conformes pour illustrer les Expectations silver.
-dbutils.widgets.dropdown("bad_records", "no", ["no", "yes"], "Injecter des enreg. non conformes ?")
+# Injecter quelques enregistrements volontairement non conformes pour illustrer les Expectations silver
+# (activé par défaut pour la démo ; passer à "no" pour des extraits propres).
+dbutils.widgets.dropdown("bad_records", "yes", ["no", "yes"], "Injecter des enreg. non conformes ?")
 
 mode = dbutils.widgets.get("mode")
 n_employees = int(dbutils.widgets.get("employees"))
