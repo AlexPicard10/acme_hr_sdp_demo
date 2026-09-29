@@ -30,8 +30,8 @@ variables:
   dlt_development_mode:
     default: true
 
-# Le host du workspace n'est PAS codé ici : il provient du profil CLI (`--profile <nom>`)
-# ou de la variable d'env DATABRICKS_HOST. Adaptez `catalog` ci-dessus à votre workspace.
+# Le host du workspace n'est PAS codé ici : déployé depuis l'UI (Git folder → panneau Deployments),
+# le bundle cible le workspace courant. Adaptez `catalog` ci-dessus à votre workspace.
 targets:
   # --- dev : itération locale + validation CI (pull requests) ---
   dev:

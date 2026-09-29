@@ -62,39 +62,51 @@ données brutes dans le Volume `alp_demo_catalog.acme_hr.landing`. Tables préfi
 
 ## Prérequis
 
-- Databricks CLI ≥ 1.0 authentifié sur le profil **`<your-profile>`**.
-- Droits `ALL_PRIVILEGES` (ou CREATE SCHEMA / VOLUME) sur le catalog **`alp_demo_catalog`**.
-- La génération de données tourne **dans le workspace** (notebook `01-Generate-HR-Data.py`, qui
-  installe Faker via `%pip`) — aucune dépendance à installer en local.
+Tout se fait **dans l'UI du workspace Databricks** : aucun outil à installer en local.
 
-> Le stockage est un **Volume Unity Catalog** — plus aucun bucket S3, rôle IAM ou credential à
-> provisionner. Le Volume vit dans le compte du votre workspace Databricks et est gouverné par UC.
+- Un workspace Databricks avec Unity Catalog et le compute **serverless**.
+- Droits `ALL_PRIVILEGES` (ou CREATE SCHEMA / VOLUME) sur le catalog **`alp_demo_catalog`**
+  (à adapter à votre catalog dans `databricks.yml` et les notebooks).
+- Le repo cloné dans un **Git folder** : **+ New → Git folder**, URL de ce repo, branche `main`.
+
+> Le stockage est un **Volume Unity Catalog** : pas de bucket, de rôle IAM ou de credential à
+> provisionner. Le Volume vit dans le compte de votre workspace et il est gouverné par UC.
 
 ## Déroulé (pas à pas)
 
-### 1. Setup Unity Catalog (schémas + Volume) & master data
-Exécuter le notebook `src/00-Utiles/00-MasterData-build.py` dans le votre workspace Databricks. Il crée le
-schéma `acme_hr`, le **Volume** `alp_demo_catalog.acme_hr.landing` (sous-dossiers `employees/`,
+### 1. Setup Unity Catalog (schéma + Volume) & master data
+Dans le Git folder, ouvrir le notebook `src/00-Utiles/00-MasterData-build` et faire **Run all**. Il crée
+le schéma `acme_hr`, le **Volume** `alp_demo_catalog.acme_hr.landing` (sous-dossiers `employees/`,
 `absences/`) qui recevra les extraits bruts, et le référentiel `alp_demo_catalog.acme_hr.departments`.
 
 ### 2. Générer et charger les données brutes dans le Volume
-Exécuter le notebook `src/00-Utiles/01-Generate-HR-Data.py` dans le workspace, avec les widgets :
-`mode` = **`seed`** (charge initiale : ~2500 employés + 12 mois d'absences), `employees`, `catalog`,
-`schema`. Il écrit les extraits JSONL **directement dans le Volume** (`.../landing/employees|absences/`)
-et persiste le roster dans `.../landing/_state/roster.json` (identifiants stables entre les runs — indispensable
-pour démontrer le CDC / SCD).
+Ouvrir le notebook `src/00-Utiles/01-Generate-HR-Data` et faire **Run all**. Widgets :
+- `mode` = **`seed`** : charge initiale, 50 000 employés et 12 mois d'absences par défaut (widget `employees`) ;
+- `bad_records` = **`yes`** (défaut) : ajoute quelques lignes volontairement non conformes pour voir
+  les Expectations en action.
 
-```bash
-# Vérifier le dépôt des fichiers dans le Volume (depuis le terminal, optionnel)
-databricks fs ls dbfs:/Volumes/alp_demo_catalog/acme_hr/landing/employees --profile <your-profile>
-```
+Le notebook écrit les extraits JSONL **directement dans le Volume** (`.../landing/employees|absences/`)
+et garde le roster dans `.../landing/_state/roster.json`, pour que les identifiants restent stables
+entre les runs (indispensable pour le CDC / SCD). Vérification : **Catalog Explorer →
+`alp_demo_catalog` → `acme_hr` → Volumes → `landing`**.
 
-### 3. Déployer et lancer le pipeline LDP
-```bash
-databricks bundle validate -t dev --profile <your-profile>
-databricks bundle deploy   -t dev --profile <your-profile>
-databricks bundle run hr_pipeline_dlt -t dev --profile <your-profile>
-```
+### 3. Déployer et lancer le pipeline (UI du bundle)
+Le pipeline est décrit par le **bundle** (`databricks.yml` et `resources/hr_pipeline_dlt.pipeline.yml`) ;
+on le déploie depuis l'UI, sans CLI.
+
+1. Dans le Git folder, ouvrir `databricks.yml`, puis le panneau **Deployments** (icône 🚀 dans la barre
+   latérale de l'éditeur).
+2. Choisir la cible **`dev`** et cliquer **Deploy**. Le panneau liste les ressources créées : le
+   pipeline `[dev <votre_nom>] HR_360_Pipeline_dev`.
+3. Dans ce même panneau, cliquer **Run** sur `hr_pipeline_dlt` (ou ouvrir le pipeline puis **Start**).
+4. Suivre le graphe : bronze → silver → gold. L'onglet **Data quality** montre les lignes rejetées
+   par les Expectations.
+
+> En cible `dev`, le déploiement est **lié à la source** : le pipeline lit directement les fichiers
+> SQL du Git folder. Une modification du code est prise en compte au run suivant, sans redéployer.
+
+> **Alternative CLI** (optionnelle) : `databricks bundle deploy -t dev` puis
+> `databricks bundle run hr_pipeline_dlt -t dev`, avec un profil CLI authentifié.
 
 ### 4. Construire les agrégats en no-code (Visual Data Prep + IA)
 Suivre le guide [`src/02-Visual-Data-Prep/README.md`](src/02-Visual-Data-Prep/README.md) : dans
@@ -104,15 +116,14 @@ d'absentéisme, et classe les motifs d'absence en texte libre avec l'opérateur 
 
 ### 5. Explorer les résultats
 Lancer les requêtes de `src/01-HR_DLT/03-Explorations/hr_exploration.sql` sur un SQL Warehouse
-(streaming tables, SCD1/SCD2, materialized views, motifs classés par l'IA, view).
+(streaming tables, SCD1/SCD2, materialized views, motifs classés par l'IA, vue 360° employé).
 
 ### 6. Démontrer l'incrémental + le CDC
-Relancer le notebook `01-Generate-HR-Data.py` avec le widget `mode` = **`increment`** : il produit un
-nouvel extrait employés (mobilités / embauches / départs) daté d'un `extract_ts` plus récent, puis
-relancer le pipeline (run **normal**, pas full-refresh) :
-```bash
-databricks bundle run hr_pipeline_dlt -t dev --profile <your-profile>
-```
+Relancer le notebook `01-Generate-HR-Data` avec le widget `mode` = **`increment`** : il produit un
+nouvel extrait employés (mobilités / embauches / départs) daté d'un `extract_ts` plus récent. Puis
+relancer le pipeline avec **Run** dans le panneau Deployments, ou **Start** sur le pipeline. Il faut
+un run **normal**, pas une full refresh.
+
 Seuls les nouveaux fichiers sont ingérés (Auto Loader, directory-listing sur le Volume).
 `gold_employees_current` reflète l'état à jour (SCD1) ; `gold_employees_history` accumule
 l'historique des mobilités (SCD2, ordonné par `extract_ts`).

@@ -9,7 +9,7 @@
 # MAGIC Générateur de données HR synthétiques, pensé pour être exécuté **directement dans le workspace**
 # MAGIC (Git folder) — support de formation.
 # MAGIC
-# MAGIC - **Widgets** au lieu d'arguments CLI (`mode`, `employees`, `catalog`, `schema`).
+# MAGIC - **Widgets** de paramétrage (`mode`, `employees`, `catalog`, `schema`, `bad_records`).
 # MAGIC - Écrit les extraits JSONL **directement dans le Volume UC** (`.../landing/employees|absences/`).
 # MAGIC - Persiste le **roster dans le Volume** (`.../landing/_state/roster.json`) pour garder des identifiants
 # MAGIC   stables entre les runs → indispensable pour démontrer le CDC / SCD (mode `increment`).
