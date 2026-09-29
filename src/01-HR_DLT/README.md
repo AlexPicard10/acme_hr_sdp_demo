@@ -14,7 +14,7 @@ Ordre du graphe (le pipeline résout les dépendances automatiquement) :
 
 02-Absences/
   DLT-Absences-Silver.sql  -> silver_absences            (Streaming Table + Expectations, motif libre `comment`)
-  DLT-Gold-Views.sql       -> gold_hr_common_base        (View persistante UC)
+  DLT-Gold-Common-Base.sql -> gold_hr_common_base        (Materialized View)
 ```
 
 Toutes les tables persistées sont en `CLUSTER BY AUTO` (liquid clustering automatique).
@@ -26,4 +26,4 @@ le Visual Data Prep `../02-Visual-Data-Prep/`, qui lit les tables silver/gold pr
 SQL Warehouse).
 
 Fonctionnalités LDP illustrées : **Streaming Table**, **Auto Loader** (`STREAM read_files`),
-**Expectations**, **Auto CDC** (SCD Type 1 & 2), **View**, **CLUSTER BY AUTO**.
+**Expectations**, **Auto CDC** (SCD Type 1 & 2), **Materialized View**, **CLUSTER BY AUTO**.

@@ -8,6 +8,8 @@
     --bronze:#9c6326; --bronze-tint:#f0e3d1;
     --silver:#5e6572; --silver-tint:#e8eaee;
     --gold:#a9791f; --gold-tint:#f4e9cb;
+    --prep:#3d5a9e; --prep-tint:#e4eaf6;
+    --ai:#b4461f; --ai-tint:#f8e2d8;
     --shadow:0 1px 2px rgba(30,28,22,.06),0 6px 20px rgba(30,28,22,.06);
     color-scheme:light;
   }
@@ -19,6 +21,8 @@
       --bronze:#d8965a; --bronze-tint:#3a2a1a;
       --silver:#aab0bb; --silver-tint:#2a2d33;
       --gold:#e0b452; --gold-tint:#382d16;
+      --prep:#8ea8e6; --prep-tint:#1d2438;
+      --ai:#ee8c64; --ai-tint:#3a2016;
       --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
       color-scheme:dark;
     }
@@ -30,6 +34,8 @@
     --bronze:#d8965a; --bronze-tint:#3a2a1a;
     --silver:#aab0bb; --silver-tint:#2a2d33;
     --gold:#e0b452; --gold-tint:#382d16;
+    --prep:#8ea8e6; --prep-tint:#1d2438;
+    --ai:#ee8c64; --ai-tint:#3a2016;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
     color-scheme:dark;
   }
@@ -37,31 +43,34 @@
   *{box-sizing:border-box}
   body{background:var(--bg);color:var(--ink);
     font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;line-height:1.5}
-  .wrap{max-width:1180px;margin-inline:auto;padding-inline:20px;padding-block:44px 64px}
+  .wrap{max-width:1240px;margin-inline:auto;padding-inline:20px;padding-block:44px 64px}
 
   .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.14em;
     text-transform:uppercase;color:var(--accent);font-weight:500;margin:0 0 14px}
   h1{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;
     font-size:clamp(2rem,6vw,3.3rem);line-height:1.02;letter-spacing:-.02em;margin:0;text-wrap:balance}
-  .lede{max-width:65ch;color:var(--muted);font-size:clamp(1rem,1.4vw,1.12rem);margin:16px 0 0}
+  .lede{max-width:70ch;color:var(--muted);font-size:clamp(1rem,1.4vw,1.12rem);margin:16px 0 0}
   .lede b{color:var(--ink);font-weight:600}
 
   .diagram{margin:40px 0 12px;overflow-x:auto;border:1px solid var(--line);border-radius:16px;
     background:var(--surface);box-shadow:var(--shadow);padding:8px}
-  .diagram-inner{min-width:860px}
+  .diagram-inner{min-width:980px}
   figure{margin:0}
   svg{display:block;width:100%;height:auto;color:var(--ink)}
   figcaption{color:var(--muted);font-size:13px;padding:2px 12px 10px;text-align:center}
 
-  /* SVG node styling via tokens (theme-aware) */
   .box{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}
   .n-bronze{fill:var(--bronze-tint);stroke:var(--bronze);stroke-width:1.5}
   .n-silver{fill:var(--silver-tint);stroke:var(--silver);stroke-width:1.5}
   .n-goldwrap{fill:var(--gold-tint);stroke:var(--gold);stroke-width:1.5}
+  .n-prepwrap{fill:var(--prep-tint);stroke:var(--prep);stroke-width:1.5}
   .n-flow{fill:var(--accent-tint);stroke:var(--accent);stroke-width:1.5}
-  .goldrow{fill:var(--surface);stroke:var(--gold);stroke-width:1;opacity:.96}
+  .goldrow{fill:var(--surface);stroke:var(--gold);stroke-width:1}
+  .preprow{fill:var(--surface);stroke:var(--prep);stroke-width:1}
+  .aichip{fill:var(--ai-tint);stroke:var(--ai);stroke-width:1.2}
   .pipe{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:5 5}
   .edge{fill:none;stroke:currentColor;stroke-width:2}
+  .edge-d{fill:none;stroke:var(--prep);stroke-width:1.6;stroke-dasharray:4 4}
   .t{font-family:"IBM Plex Sans",sans-serif;fill:var(--ink)}
   .th{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;fill:var(--ink)}
   .tm{font-family:"IBM Plex Mono",monospace;fill:var(--ink)}
@@ -70,12 +79,12 @@
   .badge{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
   .badge-t{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;fill:var(--ink);text-anchor:middle}
 
-  /* step cards */
-  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:14px;margin-top:34px}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:34px}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;
     box-shadow:var(--shadow);border-top:3px solid var(--c,var(--accent));display:flex;flex-direction:column;gap:6px}
   .card.bronze{--c:var(--bronze)} .card.silver{--c:var(--silver)}
   .card.gold{--c:var(--gold)} .card.flow{--c:var(--accent)}
+  .card.prep{--c:var(--prep)} .card.ai{--c:var(--ai)}
   .chead{display:flex;align-items:center;gap:10px}
   .num{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
     background:var(--surface);border:1.5px solid var(--ink);
@@ -93,22 +102,24 @@
   .stack .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;
     text-transform:uppercase;color:var(--muted);margin-right:4px}
   .pill{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:5px 11px;border-radius:999px;
-    background:var(--accent-tint);color:var(--accent);border:1px solid transparent;white-space:nowrap}
-  @media (prefers-reduced-motion: no-preference){.edge{transition:none}}
+    background:var(--accent-tint);color:var(--accent);white-space:nowrap}
+  .pill.prep{background:var(--prep-tint);color:var(--prep)}
+  .pill.ai{background:var(--ai-tint);color:var(--ai)}
 </style>
 
 <div class="wrap">
-  <p class="eyebrow">Démo Databricks · Spark Declarative Pipelines (SDP)</p>
+  <p class="eyebrow">Démo Databricks · Spark Declarative Pipelines + Visual Data Prep</p>
   <h1>Socle Commun RH</h1>
   <p class="lede">De l'extrait brut au socle gouverné : un pipeline déclaratif <b>bronze → silver → gold</b>
-  sur des données RH synthétiques (société fictive <b>ACME</b>). Support d'atelier pour la
-  <b>montée en compétence des équipes HR Data</b> sur les Spark Declarative Pipelines.</p>
+  en code, puis des agrégats construits <b>sans code</b> dans un <b>Visual Data Prep</b>, avec un peu
+  d'<b>IA</b> pour classer les motifs d'absence. Données RH synthétiques (société fictive <b>ACME</b>),
+  pour la <b>montée en compétence des équipes HR Data</b>.</p>
 
   <div class="diagram">
    <div class="diagram-inner">
     <figure>
-      <svg viewBox="0 0 1340 620" role="img"
-        aria-label="Architecture du pipeline : extraits RH déposés dans un Volume Unity Catalog, ingérés par Auto Loader en table bronze, transformés en deux tables silver avec Expectations, consolidés en tables gold par Auto CDC SCD1 et SCD2, Materialized Views et une View, puis consommés via Unity Catalog.">
+      <svg viewBox="0 0 1540 600" role="img"
+        aria-label="Extraits RH déposés dans un Volume Unity Catalog, ingérés par Auto Loader dans le pipeline SDP : bronze, deux tables silver avec Expectations, puis gold avec Auto CDC SCD1, SCD2 et une Materialized View. Un Visual Data Prep no-code lit les tables silver et gold, calcule trois Materialized Views dont une avec une AI Function ai_classify, puis la consommation est gouvernée par Unity Catalog.">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -116,111 +127,126 @@
         </defs>
 
         <!-- SDP container -->
-        <rect class="pipe" x="356" y="60" width="772" height="512" rx="14"/>
-        <text class="tm mut" x="372" y="86" font-size="13" font-weight="500">Lakeflow Declarative Pipeline · SDP · serverless</text>
+        <rect class="pipe" x="312" y="56" width="748" height="508" rx="14"/>
+        <text class="tm mut" x="328" y="82" font-size="13" font-weight="500">Pipeline SDP · code SQL · serverless</text>
+        <text class="tm mut" x="328" y="548" font-size="11.5">Toutes les tables : CLUSTER BY AUTO</text>
 
-        <!-- edges (draw first, under nodes) -->
-        <g>
-          <line class="edge" x1="176" y1="338" x2="192" y2="338" marker-end="url(#ah)"/>
-          <line class="edge" x1="338" y1="338" x2="371" y2="338" marker-end="url(#ah)"/>
-          <line class="edge" x1="480" y1="338" x2="502" y2="338" marker-end="url(#ah)"/>
-          <!-- bronze -> silver employees (up) -->
-          <path class="edge" d="M628 300 C 672 250, 676 214, 688 200" marker-end="url(#ah)"/>
-          <!-- bronze -> silver absences (down) -->
-          <path class="edge" d="M628 376 C 672 430, 676 466, 688 480" marker-end="url(#ah)"/>
-          <!-- silver employees -> gold (top rows) -->
-          <path class="edge" d="M866 200 C 884 214, 888 232, 890 250" marker-end="url(#ah)"/>
-          <!-- silver absences -> gold (bottom rows) -->
-          <path class="edge" d="M866 480 C 884 466, 888 448, 890 430" marker-end="url(#ah)"/>
-          <!-- gold -> consumer -->
-          <line class="edge" x1="1114" y1="340" x2="1150" y2="340" marker-end="url(#ah)"/>
-        </g>
+        <!-- edges -->
+        <line class="edge" x1="156" y1="340" x2="173" y2="340" marker-end="url(#ah)"/>
+        <line class="edge" x1="296" y1="340" x2="327" y2="340" marker-end="url(#ah)"/>
+        <line class="edge" x1="422" y1="340" x2="439" y2="340" marker-end="url(#ah)"/>
+        <path class="edge" d="M560 300 C 600 250, 610 220, 627 206" marker-end="url(#ah)"/>
+        <path class="edge" d="M560 380 C 600 430, 610 460, 627 474" marker-end="url(#ah)"/>
+        <path class="edge" d="M800 202 C 814 206, 818 218, 827 228" marker-end="url(#ah)"/>
+        <path class="edge" d="M800 478 C 814 476, 818 472, 827 468" marker-end="url(#ah)"/>
+        <line class="edge-d" x1="1040" y1="300" x2="1086" y2="300" marker-end="url(#ah)" style="color:var(--prep)"/>
+        <line class="edge" x1="1340" y1="340" x2="1367" y2="340" marker-end="url(#ah)"/>
 
         <!-- edge labels -->
-        <text class="tm mut" x="642" y="246" font-size="11" text-anchor="middle">Expect.</text>
-        <text class="tm mut" x="642" y="438" font-size="11" text-anchor="middle">Expect.</text>
-        <text class="tm mut" x="266" y="288" font-size="11" text-anchor="middle">Stream</text>
-        <text class="tm mut" x="492" y="288" font-size="10" text-anchor="middle">read_files</text>
+        <text class="tm mut" x="235" y="326" font-size="11" text-anchor="middle">dépôt</text>
+        <text class="tm mut" x="582" y="244" font-size="11" text-anchor="middle">Expect.</text>
+        <text class="tm mut" x="582" y="446" font-size="11" text-anchor="middle">Expect.</text>
+        <text class="tm" x="1063" y="290" font-size="11" text-anchor="middle" fill="var(--prep)">lit</text>
 
         <!-- Source -->
-        <rect class="box" x="26" y="292" width="150" height="92" rx="10"/>
-        <text class="th" x="42" y="316" font-size="14">Extraits RH</text>
-        <text class="t mut" x="42" y="336" font-size="11.5">· Employés (GID, dépt,</text>
-        <text class="t mut" x="42" y="351" font-size="11.5">&#160;&#160;contrat, poste…)</text>
-        <text class="t mut" x="42" y="370" font-size="11.5">· Absences (type, durée)</text>
+        <rect class="box" x="16" y="292" width="140" height="96" rx="10"/>
+        <text class="th" x="30" y="316" font-size="14">Extraits RH</text>
+        <text class="t mut" x="30" y="336" font-size="11.5">· Employés (GID,</text>
+        <text class="t mut" x="30" y="351" font-size="11.5">&#160;&#160;dépt, contrat…)</text>
+        <text class="t mut" x="30" y="370" font-size="11.5">· Absences + motif</text>
 
         <!-- Volume -->
-        <rect class="n-flow" x="196" y="294" width="142" height="88" rx="10"/>
-        <text class="th" x="267" y="332" font-size="14" text-anchor="middle">Volume UC</text>
-        <text class="tm mut" x="267" y="352" font-size="10.5" text-anchor="middle">…/landing</text>
+        <rect class="n-flow" x="176" y="298" width="120" height="84" rx="10"/>
+        <text class="th" x="236" y="334" font-size="14" text-anchor="middle">Volume UC</text>
+        <text class="tm mut" x="236" y="354" font-size="10.5" text-anchor="middle">…/landing</text>
 
         <!-- Auto Loader -->
-        <rect class="n-flow" x="376" y="298" width="104" height="80" rx="10"/>
-        <text class="th" x="428" y="333" font-size="13" text-anchor="middle">Auto</text>
-        <text class="th" x="428" y="350" font-size="13" text-anchor="middle">Loader</text>
+        <rect class="n-flow" x="330" y="300" width="92" height="80" rx="10"/>
+        <text class="th" x="376" y="336" font-size="13" text-anchor="middle">Auto</text>
+        <text class="th" x="376" y="353" font-size="13" text-anchor="middle">Loader</text>
 
         <!-- Bronze -->
-        <rect class="n-bronze" x="504" y="298" width="152" height="80" rx="10"/>
-        <text class="lay" x="580" y="322" font-size="10" text-anchor="middle" fill="var(--bronze)">bronze</text>
-        <text class="tm" x="580" y="342" font-size="10" text-anchor="middle">bronze_employees</text>
-        <text class="tm" x="580" y="358" font-size="10" text-anchor="middle">bronze_absences</text>
-        <circle class="badge" cx="580" cy="298" r="13"/><text class="badge-t" x="580" y="303" font-size="14">1</text>
+        <rect class="n-bronze" x="442" y="300" width="148" height="80" rx="10"/>
+        <text class="lay" x="516" y="324" font-size="10" text-anchor="middle" fill="var(--bronze)">bronze</text>
+        <text class="tm" x="516" y="344" font-size="10.5" text-anchor="middle">bronze_employees</text>
+        <text class="tm" x="516" y="360" font-size="10.5" text-anchor="middle">bronze_absences</text>
+        <circle class="badge" cx="516" cy="300" r="13"/><text class="badge-t" x="516" y="305" font-size="14">1</text>
 
         <!-- Silver employees -->
-        <rect class="n-silver" x="690" y="158" width="176" height="82" rx="10"/>
-        <text class="lay" x="778" y="184" font-size="10" text-anchor="middle" fill="var(--silver)">silver</text>
-        <text class="tm" x="778" y="204" font-size="11" text-anchor="middle">silver_employees</text>
-        <text class="t mut" x="778" y="222" font-size="10.5" text-anchor="middle">+ enrichi · join dépts</text>
-        <circle class="badge" cx="778" cy="158" r="13"/><text class="badge-t" x="778" y="163" font-size="14">2</text>
+        <rect class="n-silver" x="630" y="160" width="170" height="84" rx="10"/>
+        <text class="lay" x="715" y="186" font-size="10" text-anchor="middle" fill="var(--silver)">silver</text>
+        <text class="tm" x="715" y="206" font-size="11" text-anchor="middle">silver_employees</text>
+        <text class="t mut" x="715" y="225" font-size="10.5" text-anchor="middle">enrichi · join départements</text>
+        <circle class="badge" cx="715" cy="160" r="13"/><text class="badge-t" x="715" y="165" font-size="14">2</text>
 
         <!-- Silver absences -->
-        <rect class="n-silver" x="690" y="440" width="176" height="82" rx="10"/>
-        <text class="lay" x="778" y="466" font-size="10" text-anchor="middle" fill="var(--silver)">silver</text>
-        <text class="tm" x="778" y="486" font-size="11" text-anchor="middle">silver_absences</text>
-        <text class="t mut" x="778" y="504" font-size="10.5" text-anchor="middle">contrôles qualité</text>
-        <circle class="badge" cx="778" cy="440" r="13"/><text class="badge-t" x="778" y="445" font-size="14">3</text>
+        <rect class="n-silver" x="630" y="436" width="170" height="84" rx="10"/>
+        <text class="lay" x="715" y="462" font-size="10" text-anchor="middle" fill="var(--silver)">silver</text>
+        <text class="tm" x="715" y="482" font-size="11" text-anchor="middle">silver_absences</text>
+        <text class="t mut" x="715" y="501" font-size="10.5" text-anchor="middle">qualité · motif libre</text>
+        <circle class="badge" cx="715" cy="436" r="13"/><text class="badge-t" x="715" y="441" font-size="14">3</text>
 
-        <!-- Gold container -->
-        <rect class="n-goldwrap" x="890" y="150" width="224" height="380" rx="12"/>
-        <text class="lay" x="1002" y="176" font-size="11" text-anchor="middle" fill="var(--gold)">gold</text>
+        <!-- Gold (SDP) -->
+        <rect class="n-goldwrap" x="830" y="170" width="210" height="340" rx="12"/>
+        <text class="lay" x="935" y="196" font-size="11" text-anchor="middle" fill="var(--gold)">gold · sdp</text>
 
-        <!-- gold rows -->
-        <rect class="goldrow" x="902" y="188" width="200" height="52" rx="8"/>
-        <text class="tm" x="932" y="209" font-size="10">gold_employees_current</text>
-        <text class="t mut" x="932" y="226" font-size="10">Auto CDC · SCD 1 · socle</text>
-        <circle class="badge" cx="916" cy="207" r="11"/><text class="badge-t" x="916" y="211.5" font-size="12">4</text>
+        <rect class="goldrow" x="842" y="208" width="186" height="54" rx="8"/>
+        <text class="tm" x="870" y="230" font-size="10">gold_employees_current</text>
+        <text class="t mut" x="870" y="248" font-size="10">Auto CDC · SCD 1 · socle</text>
+        <circle class="badge" cx="856" cy="228" r="11"/><text class="badge-t" x="856" y="232.5" font-size="12">4</text>
 
-        <rect class="goldrow" x="902" y="248" width="200" height="52" rx="8"/>
-        <text class="tm" x="932" y="269" font-size="10">gold_employees_history</text>
-        <text class="t mut" x="932" y="286" font-size="10">Auto CDC · SCD 2 · TRACK</text>
-        <circle class="badge" cx="916" cy="267" r="11"/><text class="badge-t" x="916" y="271.5" font-size="12">5</text>
+        <rect class="goldrow" x="842" y="270" width="186" height="54" rx="8"/>
+        <text class="tm" x="870" y="292" font-size="10">gold_employees_history</text>
+        <text class="t mut" x="870" y="310" font-size="10">Auto CDC · SCD 2 · TRACK</text>
+        <circle class="badge" cx="856" cy="290" r="11"/><text class="badge-t" x="856" y="294.5" font-size="12">5</text>
 
-        <rect class="goldrow" x="902" y="308" width="200" height="52" rx="8"/>
-        <text class="tm" x="932" y="329" font-size="10">gold_headcount_by_dept</text>
-        <text class="t mut" x="932" y="346" font-size="10">Materialized View</text>
-        <circle class="badge" cx="916" cy="360" r="11"/><text class="badge-t" x="916" y="364.5" font-size="12">6</text>
+        <rect class="goldrow" x="842" y="440" width="186" height="54" rx="8"/>
+        <text class="tm" x="870" y="462" font-size="10">gold_hr_common_base</text>
+        <text class="t mut" x="870" y="480" font-size="10">Materialized View · socle</text>
+        <circle class="badge" cx="856" cy="460" r="11"/><text class="badge-t" x="856" y="464.5" font-size="12">6</text>
 
-        <rect class="goldrow" x="902" y="368" width="200" height="52" rx="8"/>
-        <text class="tm" x="932" y="389" font-size="10">gold_absenteeism_by_dept</text>
-        <text class="t mut" x="932" y="406" font-size="10">Materialized View</text>
+        <!-- Visual Data Prep -->
+        <rect class="n-prepwrap" x="1090" y="130" width="250" height="400" rx="12"/>
+        <text class="lay" x="1215" y="156" font-size="11" text-anchor="middle" fill="var(--prep)">visual data prep</text>
+        <text class="t mut" x="1215" y="174" font-size="10.5" text-anchor="middle">Lakeflow Designer · no-code</text>
+        <circle class="badge" cx="1215" cy="130" r="13"/><text class="badge-t" x="1215" y="135" font-size="14">7</text>
 
-        <rect class="goldrow" x="902" y="428" width="200" height="52" rx="8"/>
-        <text class="tm" x="932" y="449" font-size="10">gold_hr_common_base</text>
-        <text class="t mut" x="932" y="466" font-size="10">View UC · consommation</text>
-        <circle class="badge" cx="916" cy="447" r="11"/><text class="badge-t" x="916" y="451.5" font-size="12">7</text>
+        <text class="tm mut" x="1215" y="200" font-size="10" text-anchor="middle">Source · Filter · Join · Aggregate</text>
+
+        <rect class="preprow" x="1102" y="212" width="226" height="54" rx="8"/>
+        <text class="tm" x="1116" y="234" font-size="10">gold_headcount_by_department</text>
+        <text class="t mut" x="1116" y="252" font-size="10">Materialized View · effectifs</text>
+
+        <rect class="preprow" x="1102" y="274" width="226" height="54" rx="8"/>
+        <text class="tm" x="1116" y="296" font-size="10">gold_absenteeism_by_department</text>
+        <text class="t mut" x="1116" y="314" font-size="10">Materialized View · absentéisme</text>
+
+        <!-- AI sub-flow -->
+        <rect class="aichip" x="1102" y="346" width="226" height="54" rx="8"/>
+        <text class="th" x="1130" y="368" font-size="12" fill="var(--ai)">AI Function</text>
+        <text class="tm" x="1130" y="386" font-size="10">ai_classify(comment)</text>
+        <circle class="badge" cx="1116" cy="366" r="11"/><text class="badge-t" x="1116" y="370.5" font-size="12">8</text>
+        <line class="edge" x1="1215" y1="400" x2="1215" y2="415" marker-end="url(#ah)"/>
+
+        <rect class="preprow" x="1102" y="418" width="226" height="54" rx="8"/>
+        <text class="tm" x="1116" y="440" font-size="10">gold_absence_reasons_by_dept</text>
+        <text class="t mut" x="1116" y="458" font-size="10">Materialized View · motifs classés</text>
+
+        <text class="t mut" x="1215" y="506" font-size="10.5" text-anchor="middle">34 motifs distincts → 34 appels IA</text>
 
         <!-- Consumer -->
-        <rect class="box" x="1150" y="250" width="164" height="180" rx="12"/>
-        <text class="th" x="1232" y="286" font-size="14" text-anchor="middle">Consommation</text>
-        <text class="t" x="1232" y="314" font-size="12" text-anchor="middle">Dashboards AI/BI</text>
-        <text class="t" x="1232" y="334" font-size="12" text-anchor="middle">Genie · Apps</text>
-        <text class="t" x="1232" y="354" font-size="12" text-anchor="middle">Notebooks</text>
-        <line x1="1172" y1="374" x2="1292" y2="374" stroke="var(--line)" stroke-width="1"/>
-        <text class="t mut" x="1232" y="394" font-size="11" text-anchor="middle">gouverné par</text>
-        <text class="th" x="1232" y="412" font-size="12.5" text-anchor="middle" fill="var(--accent)">Unity Catalog</text>
-        <circle class="badge" cx="1232" cy="250" r="13"/><text class="badge-t" x="1232" y="255" font-size="14">8</text>
+        <rect class="box" x="1370" y="250" width="154" height="180" rx="12"/>
+        <text class="th" x="1447" y="286" font-size="14" text-anchor="middle">Consommation</text>
+        <text class="t" x="1447" y="314" font-size="12" text-anchor="middle">Dashboards AI/BI</text>
+        <text class="t" x="1447" y="334" font-size="12" text-anchor="middle">Genie · Apps</text>
+        <text class="t" x="1447" y="354" font-size="12" text-anchor="middle">Notebooks</text>
+        <line x1="1390" y1="374" x2="1504" y2="374" stroke="var(--line)" stroke-width="1"/>
+        <text class="t mut" x="1447" y="394" font-size="11" text-anchor="middle">gouverné par</text>
+        <text class="th" x="1447" y="412" font-size="12.5" text-anchor="middle" fill="var(--accent)">Unity Catalog</text>
+        <circle class="badge" cx="1447" cy="250" r="13"/><text class="badge-t" x="1447" y="255" font-size="14">9</text>
       </svg>
-      <figcaption>Flux du socle commun : Volume UC → Auto Loader → <b>bronze</b> → <b>silver</b> (Expectations) → <b>gold</b> (Auto CDC, MV, View) → consommation gouvernée par Unity Catalog.</figcaption>
+      <figcaption>Le <b>code</b> (pipeline SDP) produit des tables fiables : bronze → silver (Expectations) → gold (Auto CDC, Materialized View).
+      Le <b>no-code</b> (Visual Data Prep) en tire les agrégats et les motifs classés par l'IA, publiés en Materialized Views.</figcaption>
     </figure>
    </div>
   </div>
@@ -229,75 +255,84 @@
     <article class="card bronze">
       <div class="chead"><span class="num">1</span><span class="tag">Bronze · Auto Loader</span></div>
       <h3>Ingestion des extraits</h3>
-      <p>Les fichiers HR déposés dans le Volume UC sont chargés en continu par <b>Auto Loader</b>
-      (<code>STREAM read_files</code>) : inférence et évolution de schéma, suivi incrémental des fichiers.</p>
+      <p>Les fichiers RH déposés dans le Volume UC sont chargés en continu par <b>Auto Loader</b>
+      (<code>STREAM read_files</code>) : inférence de schéma et suivi incrémental des fichiers.</p>
       <div class="tbl">bronze_employees<br>bronze_absences</div>
     </article>
 
     <article class="card silver">
       <div class="chead"><span class="num">2</span><span class="tag">Silver · Expectations</span></div>
-      <h3>Qualité &amp; enrichissement — Employés</h3>
-      <p>Typage, colonnes calculées (<code>age_bracket</code>, ancienneté) et jointure du référentiel
+      <h3>Qualité &amp; enrichissement des employés</h3>
+      <p>Typage, colonnes calculées (<code>age_bracket</code>, ancienneté), jointure du référentiel
       <code>departments</code>. Les <b>Expectations</b> écartent ou signalent les lignes non conformes.</p>
       <div class="tbl">silver_employees</div>
     </article>
 
     <article class="card silver">
       <div class="chead"><span class="num">3</span><span class="tag">Silver · Expectations</span></div>
-      <h3>Qualité — Absences</h3>
-      <p>Mêmes contrôles déclaratifs sur le flux d'absences : cohérence des dates, durée plausible,
-      type d'absence connu.</p>
+      <h3>Qualité des absences</h3>
+      <p>Cohérence des dates, durée plausible, type connu. On garde le <b>motif libre</b>
+      (<code>comment</code>) que l'IA classera plus loin.</p>
       <div class="tbl">silver_absences</div>
     </article>
 
     <article class="card gold">
       <div class="chead"><span class="num">4</span><span class="tag">Gold · Auto CDC · SCD 1</span></div>
-      <h3>État courant — le socle</h3>
-      <p><b>Auto CDC</b> en SCD Type 1 : une seule ligne à jour par employé (dernière version, ordonnée
-      par <code>extract_ts</code>). C'est le socle commun « état courant ».</p>
+      <h3>État courant : le socle</h3>
+      <p><b>Auto CDC</b> en SCD Type 1 : une ligne à jour par employé, ordonnée par <code>extract_ts</code>.</p>
       <div class="tbl">gold_employees_current</div>
     </article>
 
     <article class="card gold">
       <div class="chead"><span class="num">5</span><span class="tag">Gold · Auto CDC · SCD 2</span></div>
-      <h3>Historisation de la mobilité</h3>
-      <p>SCD Type 2 avec <code>TRACK HISTORY ON</code> département / contrat / poste : conserve l'historique
-      des changements (<code>__START_AT</code> / <code>__END_AT</code>).</p>
+      <h3>Historique de la mobilité</h3>
+      <p>SCD Type 2 avec <code>TRACK HISTORY ON</code> département, contrat et poste
+      (<code>__START_AT</code> / <code>__END_AT</code>).</p>
       <div class="tbl">gold_employees_history</div>
     </article>
 
     <article class="card gold">
       <div class="chead"><span class="num">6</span><span class="tag">Gold · Materialized View</span></div>
-      <h3>Agrégats de consommation</h3>
-      <p>Vues matérialisées pour les <b>effectifs</b> et l'<b>absentéisme</b> par département,
-      recalculées à chaque incrément.</p>
-      <div class="tbl">gold_headcount_by_department<br>gold_absenteeism_by_department</div>
-    </article>
-
-    <article class="card gold">
-      <div class="chead"><span class="num">7</span><span class="tag">Gold · View</span></div>
       <h3>Exposition du socle</h3>
-      <p>Une <b>View</b> Unity Catalog assemble le socle commun prêt à consommer, calculé à la volée.</p>
+      <p>Une <b>Materialized View</b> assemble l'état courant et les KPI d'absence de l'année ; le résultat est stocké et rafraîchi à chaque update du pipeline.</p>
       <div class="tbl">gold_hr_common_base</div>
     </article>
 
+    <article class="card prep">
+      <div class="chead"><span class="num">7</span><span class="tag">Visual Data Prep · no-code</span></div>
+      <h3>Agrégats construits par l'analyste</h3>
+      <p>Dans <b>Lakeflow Designer</b>, on enchaîne des opérateurs (Source, Filter, Join, Aggregate)
+      et on publie des <b>Materialized Views</b>, sans écrire de SQL. Genie Code peut générer le canvas.</p>
+      <div class="tbl">gold_headcount_by_department<br>gold_absenteeism_by_department</div>
+    </article>
+
+    <article class="card ai">
+      <div class="chead"><span class="num">8</span><span class="tag">AI Function · ai_classify</span></div>
+      <h3>Motifs d'absence classés par l'IA</h3>
+      <p>Chaque motif libre distinct est rangé en <i>santé</i>, <i>famille</i>, <i>formation</i>,
+      <i>lié au travail</i> ou <i>personnel</i>. Un signal santé &amp; sécurité pour les RH.</p>
+      <div class="tbl">gold_absence_reasons_by_department</div>
+    </article>
+
     <article class="card flow">
-      <div class="chead"><span class="num">8</span><span class="tag">Unity Catalog</span></div>
+      <div class="chead"><span class="num">9</span><span class="tag">Unity Catalog</span></div>
       <h3>Consommation gouvernée</h3>
-      <p>Dashboards AI/BI, Genie, apps ou notebooks lisent les tables gold — accès, lignage et audit
-      <b>gouvernés par Unity Catalog</b>.</p>
-      <div class="tbl">Dashboard · Genie · App · Bot</div>
+      <p>Dashboards AI/BI, Genie, apps ou notebooks lisent les tables gold et les MV : accès, lignage
+      et audit <b>gouvernés par Unity Catalog</b>.</p>
+      <div class="tbl">Dashboard · Genie · App · Notebook</div>
     </article>
   </div>
 
   <div class="stack">
-    <span class="lbl">SDP mis en œuvre</span>
+    <span class="lbl">Mis en œuvre</span>
     <span class="pill">Auto Loader</span>
     <span class="pill">Expectations</span>
     <span class="pill">Auto CDC · SCD 1/2</span>
-    <span class="pill">Materialized Views</span>
-    <span class="pill">View</span>
+    <span class="pill">Materialized View</span>
+    <span class="pill">CLUSTER BY AUTO</span>
+    <span class="pill prep">Visual Data Prep</span>
+    <span class="pill prep">Materialized Views</span>
+    <span class="pill ai">AI Function</span>
     <span class="pill">Unity Catalog</span>
-    <span class="pill">Serverless</span>
   </div>
 </div>

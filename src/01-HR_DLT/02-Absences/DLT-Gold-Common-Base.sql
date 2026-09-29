@@ -1,9 +1,11 @@
 -- Databricks notebook source
 -- MAGIC %md
--- MAGIC ## 6 / Socle commun — View de consommation (Unity Catalog)
--- MAGIC #### Une **View** persistante (non matérialisée) : la requête s'exécute à l'accès, aucun stockage.
--- MAGIC C'est la vue "socle commun" large exposée aux consommateurs (BI, apps, analystes) : l'état
--- MAGIC courant de chaque employé enrichi de ses KPI d'absence de l'année.
+-- MAGIC ## 6 / Socle commun — Materialized View de consommation (Unity Catalog)
+-- MAGIC #### Une **Materialized View** : le résultat est stocké et rafraîchi à chaque update du pipeline.
+-- MAGIC C'est la table "socle commun" large exposée aux consommateurs (BI, apps, analystes) : l'état
+-- MAGIC courant de chaque employé enrichi de ses KPI d'absence de l'année. On la matérialise car elle
+-- MAGIC est lue souvent et coûte une jointure + une agrégation : les lecteurs obtiennent un résultat
+-- MAGIC déjà calculé (et clusterisé automatiquement) au lieu de relancer la requête à chaque accès.
 -- MAGIC
 -- MAGIC > Les **agrégats de consommation** (effectifs, absentéisme, motifs d'absence classés par l'IA)
 -- MAGIC > ne sont plus codés ici : ils sont construits **en no-code** dans un **Visual Data Prep**
@@ -12,7 +14,8 @@
 
 -- COMMAND ----------
 
-CREATE VIEW gold_hr_common_base
+CREATE OR REFRESH MATERIALIZED VIEW gold_hr_common_base
+CLUSTER BY AUTO
 COMMENT "Socle commun HR — vue consolidée employés (état courant) + KPI d'absence de l'année en cours"
 TBLPROPERTIES ('quality' = 'gold')
 AS

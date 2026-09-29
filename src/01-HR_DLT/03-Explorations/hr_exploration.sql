@@ -87,7 +87,7 @@ DESCRIBE DETAIL alp_demo_catalog.acme_hr.silver_absences;
 
 -- COMMAND ----------
 
--- MAGIC %md ## View — socle commun (consommation)
+-- MAGIC %md ## Materialized View — socle commun (consommation)
 
 -- COMMAND ----------
 

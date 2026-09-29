@@ -13,7 +13,7 @@
 -- MAGIC | Nettoyage, typage, colonnes calculées | **Streaming Table** + **Expectations** — couche *silver* |
 -- MAGIC | Jointure référentiel | jointure SQL sur le master data |
 -- MAGIC | Déduplication / historisation | **Auto CDC** (SCD1/SCD2) — couche *gold* |
--- MAGIC | Sortie / consommation | **Materialized View** + **View** (Unity Catalog) |
+-- MAGIC | Sortie / consommation | **Materialized View** (Unity Catalog) |
 
 -- COMMAND ----------
 

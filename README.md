@@ -6,7 +6,7 @@ synthétiques**, un **socle commun HR** (*Common Base*) :
 
 > extraits HR (type CESAM/SESAM) déposés dans un **Volume Unity Catalog** → ingestion **Auto Loader**
 > → **Spark Declarative Pipeline** (bronze → silver → gold) → agrégats **no-code** dans un **Visual
-> Data Prep** (avec **IA**) → **Materialized Views** + **View**, le tout gouverné par **Unity Catalog**
+> Data Prep** (avec **IA**) → **Materialized Views**, le tout gouverné par **Unity Catalog**
 > et déployé par un **Databricks Asset Bundle**.
 
 Pensé comme **support d'atelier / d'enablement** : chaque étape est annotée et illustre une
@@ -24,7 +24,7 @@ fonctionnalité SDP dans un scénario métier HR réaliste.
 | Colonnes calculées (`age_bracket`, `seniority_years`) + join référentiel | `silver_employees` | Préparation & enrichissement — silver |
 | **Auto CDC — SCD Type 1** (dernière version / employé) | `gold_employees_current` | Déduplication / dernière valeur — gold |
 | **Auto CDC — SCD Type 2** (historique mobilité) | `gold_employees_history` | Historisation — gold |
-| **View** (calcul à la volée, UC) | `gold_hr_common_base` | Exposition aux consommateurs — gold |
+| **Materialized View** (résultat stocké, rafraîchi par le pipeline) | `gold_hr_common_base` | Socle commun exposé aux consommateurs — gold |
 | **`CLUSTER BY AUTO`** (liquid clustering automatique) | toutes les tables du pipeline | Performance sans réglage manuel |
 | **Visual Data Prep** (Lakeflow Designer, no-code) → **Materialized Views** | `gold_headcount_by_department`, `gold_absenteeism_by_department` | Agrégats de consommation construits par un analyste — gold |
 | **AI Function** `ai_classify` (no-code) | `gold_absence_reasons_by_department` | Classement IA des motifs d'absence en texte libre |
@@ -49,7 +49,7 @@ SILVER  silver_employees · silver_absences                     (streaming table
         ▼
 GOLD    gold_employees_current        (Auto CDC SCD1 — le "socle commun")
         gold_employees_history        (Auto CDC SCD2 — historique)
-        gold_hr_common_base           (view UC de consommation)
+        gold_hr_common_base           (materialized view de consommation)
         ▼  Visual Data Prep (Lakeflow Designer, no-code) — src/02-Visual-Data-Prep/
         gold_headcount_by_department        (materialized view)
         gold_absenteeism_by_department      (materialized view)

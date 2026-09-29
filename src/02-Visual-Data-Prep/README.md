@@ -1,7 +1,7 @@
 # Visual Data Prep : agrégats gold en no-code + IA (Lakeflow Designer)
 
 Le pipeline SDP (`src/01-HR_DLT/`) produit les tables fiables du socle : `silver_absences`,
-`gold_employees_current` (SCD1), `gold_employees_history` (SCD2) et la view `gold_hr_common_base`.
+`gold_employees_current` (SCD1), `gold_employees_history` (SCD2) et la materialized view `gold_hr_common_base`.
 
 Les **agrégats de consommation** sont construits **sans code**, dans un **Visual Data Prep**
 (Lakeflow Designer). C'est le parcours d'un analyste HR : il glisse des opérateurs sur un canvas,
