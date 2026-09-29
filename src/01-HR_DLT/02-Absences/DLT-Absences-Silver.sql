@@ -3,7 +3,8 @@
 -- MAGIC ## 5 / Préparation & Qualité — Absences (Streaming Table + Expectations)
 -- MAGIC #### Nettoyage et contrôle qualité du flux d'événements d'absence, en réutilisant le même pattern.
 -- MAGIC Cohérence des dates, durée plausible, type d'absence connu. On dérive le mois d'absence pour
--- MAGIC les agrégats en aval.
+-- MAGIC les agrégats en aval, et on garde le **motif libre** (`comment`) que le Visual Data Prep
+-- MAGIC classera avec l'IA.
 
 -- COMMAND ----------
 
@@ -15,6 +16,7 @@ CREATE OR REFRESH STREAMING TABLE silver_absences
   CONSTRAINT positive_days    EXPECT (days > 0 AND days <= 365)                     ON VIOLATION DROP ROW,
   CONSTRAINT known_type       EXPECT (absence_type IS NOT NULL)
 )
+CLUSTER BY AUTO
 COMMENT "Événements d'absence nettoyés et typés — couche silver"
 TBLPROPERTIES ('quality' = 'silver')
 AS
@@ -26,5 +28,6 @@ SELECT
   to_date(end_date)                         AS end_date,
   CAST(days AS INT)                         AS days,
   to_timestamp(event_timestamp)             AS event_timestamp,
-  date_trunc('month', to_date(start_date))  AS absence_month
+  date_trunc('month', to_date(start_date))  AS absence_month,
+  NULLIF(trim(comment), '')                 AS comment  -- motif libre (texte), classé par l'IA dans le Visual Data Prep
 FROM STREAM(bronze_absences);

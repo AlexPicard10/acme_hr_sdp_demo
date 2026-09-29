@@ -23,10 +23,16 @@
 -- MAGIC Auto Loader gère l'inférence de schéma, l'évolution de schéma (mode `rescue`) et le suivi
 -- MAGIC incrémental des fichiers : le premier run charge l'historique, les suivants n'ingèrent que
 -- MAGIC les nouveaux fichiers (traitement Delta, rapide et peu coûteux).
+-- MAGIC
+-- MAGIC `CLUSTER BY AUTO` active le **liquid clustering automatique** : Databricks choisit (et fait
+-- MAGIC évoluer) les clés de clustering en fonction des requêtes réellement exécutées, via Predictive
+-- MAGIC Optimization. Plus besoin de deviner des colonnes de partitionnement. Toutes les tables du
+-- MAGIC pipeline l'utilisent.
 
 -- COMMAND ----------
 
 CREATE OR REFRESH STREAMING TABLE bronze_employees
+CLUSTER BY AUTO
 COMMENT "Extraits bruts Employés (master HR) ingérés depuis un Volume UC via Auto Loader — couche bronze"
 TBLPROPERTIES ('quality' = 'bronze')
 AS

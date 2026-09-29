@@ -48,7 +48,8 @@ ORDER BY __START_AT;
 
 -- COMMAND ----------
 
--- MAGIC %md ## Materialized views
+-- MAGIC %md ## Materialized views (construites en no-code dans le Visual Data Prep)
+-- MAGIC À lancer après le job `hr_common_base_job` (pipeline SDP → Visual Data Prep).
 
 -- COMMAND ----------
 
@@ -58,6 +59,31 @@ SELECT business_unit, absence_type, sum(total_absence_days) AS jours_absence
 FROM alp_demo_catalog.acme_hr.gold_absenteeism_by_department
 GROUP BY business_unit, absence_type
 ORDER BY jours_absence DESC;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## Motifs d'absence classés par l'IA (AI Function `ai_classify`)
+
+-- COMMAND ----------
+
+SELECT reason_category, sum(absence_events) AS absences, sum(total_absence_days) AS jours
+FROM alp_demo_catalog.acme_hr.gold_absence_reasons_by_department
+GROUP BY reason_category
+ORDER BY jours DESC;
+
+-- Absences « liées au travail » par département : un signal santé & sécurité pour les RH
+SELECT department_name, absence_events, total_absence_days
+FROM alp_demo_catalog.acme_hr.gold_absence_reasons_by_department
+WHERE reason_category = 'lié au travail'
+ORDER BY total_absence_days DESC;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## Liquid clustering automatique (`CLUSTER BY AUTO`)
+
+-- COMMAND ----------
+
+DESCRIBE DETAIL alp_demo_catalog.acme_hr.silver_absences;
 
 -- COMMAND ----------
 

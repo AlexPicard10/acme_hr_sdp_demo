@@ -18,6 +18,7 @@ CREATE OR REFRESH STREAMING TABLE silver_employees
   CONSTRAINT known_department    EXPECT (department_name IS NOT NULL),
   CONSTRAINT valid_contract      EXPECT (contract_type IN ('CDI','CDD','Alternance','Stage','Intérim'))
 )
+CLUSTER BY AUTO
 COMMENT "Employés nettoyés, typés, enrichis (age_bracket, ancienneté) et joints au référentiel départements — couche silver"
 TBLPROPERTIES ('quality' = 'silver')
 AS

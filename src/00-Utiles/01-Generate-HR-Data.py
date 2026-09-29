@@ -76,6 +76,37 @@ ABSENCE_TYPES = [
     ("Congés payés", 30), ("Maladie", 25), ("RTT", 20),
     ("Formation", 12), ("Congé maternité", 5), ("Congé sans solde", 8),
 ]
+# Motifs libres saisis par le salarié / manager (texte non structuré), classés par l'IA dans le
+# Visual Data Prep (ai_classify). Pool volontairement réduit : on classe les motifs DISTINCTS, donc
+# le coût IA reste faible quel que soit le volume. Certains motifs sont ambigus (ex. « mal de dos
+# après une journée sur chantier » = santé ou lié au travail ?) pour rendre la classification parlante.
+ABSENCE_COMMENT_RATE = 0.3
+ABSENCE_COMMENTS = {
+    "Maladie": [
+        "Grippe, arrêt prescrit par le médecin", "Gastro-entérite", "Angine avec fièvre",
+        "Migraine sévère", "Covid positif, isolement", "Opération programmée du genou",
+        "Mal de dos après une journée de manutention sur chantier",
+        "Chute dans l'escalier du bâtiment B pendant le service",
+        "Épuisement professionnel, arrêt de 2 semaines", "Stress lié à la charge de travail",
+    ],
+    "Congés payés": [
+        "Vacances en famille", "Voyage à l'étranger", "Mariage de ma sœur",
+        "Déménagement", "Pont de l'Ascension", "Vacances scolaires avec les enfants",
+    ],
+    "RTT": [
+        "Rendez-vous chez le notaire", "Garde des enfants, école fermée", "RTT posée pour démarches administratives",
+        "Récupération après astreinte du week-end", "Rendez-vous médical",
+    ],
+    "Formation": [
+        "Formation habilitation électrique", "Formation sécurité incendie", "Certification Databricks",
+        "Formation management d'équipe", "Séminaire annuel de la direction", "Cours d'anglais professionnel",
+    ],
+    "Congé maternité": ["Naissance prévue en juin", "Congé maternité", "Congé prénatal"],
+    "Congé sans solde": [
+        "Projet personnel de tour du monde", "Accompagnement d'un parent malade",
+        "Création d'entreprise", "Année sabbatique",
+    ],
+}
 
 fake = Faker("fr_FR")
 Faker.seed(42)
@@ -177,6 +208,9 @@ def absence_events(roster, start, end, n_events):
             "end_date": e.isoformat(),
             "days": days,
             "event_timestamp": dt.datetime.combine(s, dt.time(8, 0)).isoformat(),
+            # Motif libre sur ~30 % des absences (sinon None) : matière première de l'IA no-code.
+            "comment": (random.choice(ABSENCE_COMMENTS[atype])
+                        if random.random() < ABSENCE_COMMENT_RATE else None),
         })
     return events
 

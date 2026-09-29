@@ -9,6 +9,7 @@
 -- COMMAND ----------
 
 CREATE OR REFRESH STREAMING TABLE gold_employees_current
+CLUSTER BY AUTO
 COMMENT "Socle commun HR — état courant : dernière version connue de chaque employé (SCD1)"
 TBLPROPERTIES (
   'quality' = 'gold',
@@ -36,6 +37,7 @@ FROM STREAM(silver_employees)
 -- COMMAND ----------
 
 CREATE OR REFRESH STREAMING TABLE gold_employees_history
+CLUSTER BY AUTO
 COMMENT "Historique employés (SCD2) — mobilité département / contrat / poste dans le temps"
 TBLPROPERTIES ('quality' = 'gold');
 

@@ -5,8 +5,9 @@ Spark Declarative Pipelines (SDP)**. Il construit, de bout en bout et avec des *
 synthétiques**, un **socle commun HR** (*Common Base*) :
 
 > extraits HR (type CESAM/SESAM) déposés dans un **Volume Unity Catalog** → ingestion **Auto Loader**
-> → **Spark Declarative Pipeline** (bronze → silver → gold) → **Materialized Views** + **View**, le
-> tout gouverné par **Unity Catalog**, déployé par un **Databricks Asset Bundle** et livré en **CI/CD**.
+> → **Spark Declarative Pipeline** (bronze → silver → gold) → agrégats **no-code** dans un **Visual
+> Data Prep** (avec **IA**) → **Materialized Views** + **View**, le tout gouverné par **Unity Catalog**,
+> déployé par un **Databricks Asset Bundle** et livré en **CI/CD**.
 
 Pensé comme **support d'atelier / d'enablement** : chaque étape est annotée et illustre une
 fonctionnalité SDP dans un scénario métier HR réaliste.
@@ -23,10 +24,14 @@ fonctionnalité SDP dans un scénario métier HR réaliste.
 | Colonnes calculées (`age_bracket`, `seniority_years`) + join référentiel | `silver_employees` | Préparation & enrichissement — silver |
 | **Auto CDC — SCD Type 1** (dernière version / employé) | `gold_employees_current` | Déduplication / dernière valeur — gold |
 | **Auto CDC — SCD Type 2** (historique mobilité) | `gold_employees_history` | Historisation — gold |
-| **Materialized View** (agrégats stockés) | `gold_headcount_by_department`, `gold_absenteeism_by_department` | Agrégats de consommation — gold |
 | **View** (calcul à la volée, UC) | `gold_hr_common_base` | Exposition aux consommateurs — gold |
+| **`CLUSTER BY AUTO`** (liquid clustering automatique) | toutes les tables du pipeline | Performance sans réglage manuel |
+| **Visual Data Prep** (Lakeflow Designer, no-code) → **Materialized Views** | `gold_headcount_by_department`, `gold_absenteeism_by_department` | Agrégats de consommation construits par un analyste — gold |
+| **AI Function** `ai_classify` (no-code) | `gold_absence_reasons_by_department` | Classement IA des motifs d'absence en texte libre |
+| **Job** DAB (pipeline → Visual Data Prep) | `hr_common_base_job` | Orchestration de bout en bout |
 
-Scénario : **Employés + Absences + Départements** (effectifs, pyramide des âges, mixité, absentéisme).
+Scénario : **Employés + Absences + Départements** (effectifs, pyramide des âges, mixité,
+absentéisme, motifs d'absence).
 
 ## Architecture
 
@@ -44,9 +49,11 @@ SILVER  silver_employees · silver_absences                     (streaming table
         ▼
 GOLD    gold_employees_current        (Auto CDC SCD1 — le "socle commun")
         gold_employees_history        (Auto CDC SCD2 — historique)
-        gold_headcount_by_department    (materialized view)
-        gold_absenteeism_by_department  (materialized view)
         gold_hr_common_base           (view UC de consommation)
+        ▼  Visual Data Prep (Lakeflow Designer, no-code) — src/02-Visual-Data-Prep/
+        gold_headcount_by_department        (materialized view)
+        gold_absenteeism_by_department      (materialized view)
+        gold_absence_reasons_by_department  (materialized view · AI Function ai_classify)
 ```
 
 Catalog `alp_demo_catalog` · schéma unique `acme_hr` · référentiel `departments` ·
@@ -89,11 +96,17 @@ databricks bundle deploy   -t dev --profile <your-profile>
 databricks bundle run hr_pipeline_dlt -t dev --profile <your-profile>
 ```
 
-### 4. Explorer les résultats
-Lancer les requêtes de `src/01-HR_DLT/03-Explorations/hr_exploration.sql` sur un SQL Warehouse
-(streaming tables, SCD1/SCD2, materialized views, view).
+### 4. Construire les agrégats en no-code (Visual Data Prep + IA)
+Suivre le guide [`src/02-Visual-Data-Prep/README.md`](src/02-Visual-Data-Prep/README.md) : dans
+Lakeflow Designer, un analyste construit sans code les Materialized Views d'effectifs et
+d'absentéisme, et classe les motifs d'absence en texte libre avec l'opérateur **AI Function**
+(`ai_classify`). Un prompt **Genie Code** prêt à coller permet de générer le canvas.
 
-### 5. Démontrer l'incrémental + le CDC
+### 5. Explorer les résultats
+Lancer les requêtes de `src/01-HR_DLT/03-Explorations/hr_exploration.sql` sur un SQL Warehouse
+(streaming tables, SCD1/SCD2, materialized views, motifs classés par l'IA, view).
+
+### 6. Démontrer l'incrémental + le CDC
 Relancer le notebook `01-Generate-HR-Data.py` avec le widget `mode` = **`increment`** : il produit un
 nouvel extrait employés (mobilités / embauches / départs) daté d'un `extract_ts` plus récent, puis
 relancer le pipeline (run **normal**, pas full-refresh) :
@@ -136,7 +149,7 @@ databricks bundle deploy   --target prod --profile <your-profile>   # ce que fai
 ## Aller plus loin (optionnel)
 - **Dashboard AI/BI** sur `gold_headcount_by_department`, `gold_absenteeism_by_department` et
   `gold_hr_common_base` (effectifs par BU, pyramide des âges, taux d'absentéisme par mois/type).
-- **Job / Workflow** planifié pour orchestrer le pipeline (schedule + notifications).
+- **Planifier** le job `hr_common_base_job` (schedule + notifications).
 - Ajouter d'autres sources HR (paie, formation) en réutilisant le même squelette bronze→silver→gold.
 
 ## Structure
@@ -152,9 +165,10 @@ acme_hr_sdp_demo/
     ├── 00-Utiles/
     │   ├── 00-MasterData-build.py     # setup : schémas + Volume + référentiel departments
     │   └── 01-Generate-HR-Data.py     # générateur HR synthétique en NOTEBOOK (widgets, écrit dans le Volume)
-    └── 01-HR_DLT/
-        ├── 00-Data-Sources/           # bronze (Auto Loader)
-        ├── 01-Employees/              # silver + gold (SCD1/SCD2)
-        ├── 02-Absences/               # silver + materialized views + view
-        └── 03-Explorations/           # requêtes de validation (hors pipeline)
+    ├── 01-HR_DLT/
+    │   ├── 00-Data-Sources/           # bronze (Auto Loader)
+    │   ├── 01-Employees/              # silver + gold (SCD1/SCD2)
+    │   ├── 02-Absences/               # silver + view de consommation
+    │   └── 03-Explorations/           # requêtes de validation (hors pipeline)
+    └── 02-Visual-Data-Prep/           # agrégats no-code + IA (Lakeflow Designer) — voir son README
 ```

@@ -8,6 +8,7 @@
 -- COMMAND ----------
 
 CREATE OR REFRESH STREAMING TABLE bronze_absences
+CLUSTER BY AUTO
 COMMENT "Événements bruts d'absence ingérés depuis un Volume UC via Auto Loader — couche bronze"
 TBLPROPERTIES ('quality' = 'bronze')
 AS
