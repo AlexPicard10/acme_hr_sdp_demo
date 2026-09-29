@@ -11,7 +11,7 @@
 CREATE OR REFRESH STREAMING TABLE silver_absences
 (
   CONSTRAINT valid_absence_id EXPECT (absence_id IS NOT NULL)                       ON VIOLATION FAIL UPDATE,
-  CONSTRAINT valid_employee   EXPECT (employee_gid IS NOT NULL)                     ON VIOLATION DROP ROW,
+  CONSTRAINT valid_employee   EXPECT (employee_id IS NOT NULL)                     ON VIOLATION DROP ROW,
   CONSTRAINT valid_dates      EXPECT (start_date IS NOT NULL AND end_date >= start_date) ON VIOLATION DROP ROW,
   CONSTRAINT positive_days    EXPECT (days > 0 AND days <= 365)                     ON VIOLATION DROP ROW,
   CONSTRAINT known_type       EXPECT (absence_type IS NOT NULL)
@@ -22,7 +22,7 @@ TBLPROPERTIES ('quality' = 'silver')
 AS
 SELECT
   absence_id,
-  employee_gid,
+  employee_id,
   absence_type,
   to_date(start_date)                       AS start_date,
   to_date(end_date)                         AS end_date,

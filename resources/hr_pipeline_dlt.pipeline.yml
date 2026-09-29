@@ -1,7 +1,7 @@
 resources:
   pipelines:
     hr_pipeline_dlt:
-      name: HR_CommonBase_Pipeline_LDP_${bundle.target}
+      name: HR_360_Pipeline_${bundle.target}
       # Ces valeurs sont lisibles dans le code SQL via ${nom} (spark.conf).
       configuration:
         "master_data_schema": ${var.master_data_schema}

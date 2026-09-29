@@ -1,7 +1,7 @@
 # Visual Data Prep : agrégats gold en no-code + IA (Lakeflow Designer)
 
-Le pipeline SDP (`src/01-HR_DLT/`) produit les tables fiables du socle : `silver_absences`,
-`gold_employees_current` (SCD1), `gold_employees_history` (SCD2) et la materialized view `gold_hr_common_base`.
+Le pipeline SDP (`src/01-HR_DLT/`) produit les tables fiables : `silver_absences`,
+`gold_employees_current` (SCD1), `gold_employees_history` (SCD2) et la materialized view `gold_employee_360`.
 
 Les **agrégats de consommation** sont construits **sans code**, dans un **Visual Data Prep**
 (Lakeflow Designer). C'est le parcours d'un analyste HR : il glisse des opérateurs sur un canvas,
@@ -15,7 +15,7 @@ Catalog. Un opérateur **AI Function** (`ai_classify`) classe les motifs d'absen
 | `gold_absence_reasons_by_department` | Source → Filter → Unique → **AI Function (`ai_classify`)** → Join → Aggregate → Output |
 
 Fichier attendu dans le Git folder : **`src/02-Visual-Data-Prep/hr_gold_kpis.designer.ipynb`**.
-Il est orchestré après le pipeline par le job DAB `hr_common_base_job`.
+Il est orchestré après le pipeline par le job DAB `hr_360_job`.
 
 ## Prérequis
 
@@ -38,7 +38,7 @@ puis le nommer `hr_gold_kpis`. Créer ensuite un **Group** par sortie (A, B, C) 
    - `is_cdi` = `CASE WHEN contract_type = 'CDI' THEN 1 ELSE 0 END`
    - `is_female` = `CASE WHEN gender = 'F' THEN 1 ELSE 0 END`
 4. **Aggregate** : group by `department_id`, `department_name`, `business_unit`, `region`.
-   - `COUNT(employee_gid)` → `headcount`
+   - `COUNT(employee_id)` → `headcount`
    - `AVG(age)` → `avg_age`
    - `AVG(seniority_years)` → `avg_seniority_years`
    - `SUM(is_cdi)` → `cdi_count`
@@ -54,11 +54,11 @@ Résultat attendu : **12 lignes**, une par département.
 
 1. **Source** : `alp_demo_catalog.acme_hr.silver_absences`.
 2. **Source** : `alp_demo_catalog.acme_hr.gold_employees_current` (on peut réutiliser celle de A).
-3. **Join** *Inner* sur `employee_gid`. Garder côté absences : `employee_gid`, `absence_month`,
+3. **Join** *Inner* sur `employee_id`. Garder côté absences : `employee_id`, `absence_month`,
    `absence_type`, `days` ; côté employés : `department_id`, `department_name`, `business_unit`.
 4. **Aggregate** : group by `department_id`, `department_name`, `business_unit`, `absence_month`,
    `absence_type`.
-   - `COUNT DISTINCT(employee_gid)` → `employees_absent`
+   - `COUNT DISTINCT(employee_id)` → `employees_absent`
    - `COUNT(*)` → `absence_events`
    - `SUM(days)` → `total_absence_days`
    - `AVG(days)` → `avg_days_per_absence`
@@ -79,7 +79,7 @@ catégories exploitables par les RH.
    Vérifier dans l'aperçu que les motifs ambigus (mal de dos sur chantier, stress lié à la charge
    de travail…) partent bien en `lié au travail`.
 5. **Join** *Inner* : le résultat de l'étape 4 avec la sortie de l'étape 2 sur `comment`, puis avec
-   `gold_employees_current` sur `employee_gid`.
+   `gold_employees_current` sur `employee_id`.
 6. **Aggregate** : group by `department_name`, `business_unit`, `reason_category`.
    - `COUNT(*)` → `absence_events`
    - `SUM(days)` → `total_absence_days`
@@ -102,15 +102,15 @@ department_name, business_unit, region : headcount (nombre d'employés), avg_age
 (arrondis à 1 décimale), cdi_count (contract_type = 'CDI'), female_count (gender = 'F') et female_pct
 (pourcentage de femmes, 1 décimale). Publie en materialized view gold_headcount_by_department.
 
-B) Joins silver_absences et gold_employees_current sur employee_gid (inner). Par department_id,
-department_name, business_unit, absence_month, absence_type : employees_absent (employee_gid
+B) Joins silver_absences et gold_employees_current sur employee_id (inner). Par department_id,
+department_name, business_unit, absence_month, absence_type : employees_absent (employee_id
 distincts), absence_events, total_absence_days (somme de days), avg_days_per_absence (moyenne,
 1 décimale). Publie en materialized view gold_absenteeism_by_department.
 
 C) Depuis silver_absences, garde les lignes où comment n'est pas nul, déduplique les valeurs de
 comment, puis classe chaque comment avec ai_classify parmi les labels : santé, famille, formation,
 lié au travail, personnel (colonne reason_category). Rejoins le résultat aux absences sur comment,
-puis à gold_employees_current sur employee_gid. Par department_name, business_unit, reason_category :
+puis à gold_employees_current sur employee_id. Par department_name, business_unit, reason_category :
 absence_events et total_absence_days. Publie en materialized view gold_absence_reasons_by_department.
 ```
 
@@ -121,7 +121,7 @@ Relire le canvas proposé (noms de colonnes, type de jointure) avant de l'exécu
 1. **Run** interactif : vérifier l'aperçu de chaque Output, puis contrôler les 3 MV dans le Catalog Explorer.
 2. Sauvegarder : le fichier apparaît en `hr_gold_kpis.designer.ipynb` dans le Git folder.
    **Commit & push** depuis le dialogue Git.
-3. Le job DAB `hr_common_base_job` (`resources/hr_common_base.job.yml`) enchaîne
+3. Le job DAB `hr_360_job` (`resources/hr_360.job.yml`) enchaîne
    **pipeline SDP → Visual Data Prep**. Dans un bundle, un Visual Data Prep se déclare comme une
    `notebook_task` même si l'UI Jobs l'affiche comme « Visual data prep ».
 

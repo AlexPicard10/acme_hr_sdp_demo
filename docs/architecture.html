@@ -1,4 +1,4 @@
-<title>Socle Commun RH</title>
+<title>ACME HR 360</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   :root{
@@ -109,8 +109,8 @@
 
 <div class="wrap">
   <p class="eyebrow">Démo Databricks · Spark Declarative Pipelines + Visual Data Prep</p>
-  <h1>Socle Commun RH</h1>
-  <p class="lede">De l'extrait brut au socle gouverné : un pipeline déclaratif <b>bronze → silver → gold</b>
+  <h1>ACME HR 360</h1>
+  <p class="lede">De l'extrait brut à la vue 360° gouvernée : un pipeline déclaratif <b>bronze → silver → gold</b>
   en code, puis des agrégats construits <b>sans code</b> dans un <b>Visual Data Prep</b>, avec un peu
   d'<b>IA</b> pour classer les motifs d'absence. Données RH synthétiques (société fictive <b>ACME</b>),
   pour la <b>montée en compétence des équipes HR Data</b>.</p>
@@ -151,7 +151,7 @@
         <!-- Source -->
         <rect class="box" x="16" y="292" width="140" height="96" rx="10"/>
         <text class="th" x="30" y="316" font-size="14">Extraits RH</text>
-        <text class="t mut" x="30" y="336" font-size="11.5">· Employés (GID,</text>
+        <text class="t mut" x="30" y="336" font-size="11.5">· Employés (ID,</text>
         <text class="t mut" x="30" y="351" font-size="11.5">&#160;&#160;dépt, contrat…)</text>
         <text class="t mut" x="30" y="370" font-size="11.5">· Absences + motif</text>
 
@@ -192,7 +192,7 @@
 
         <rect class="goldrow" x="842" y="208" width="186" height="54" rx="8"/>
         <text class="tm" x="870" y="230" font-size="10">gold_employees_current</text>
-        <text class="t mut" x="870" y="248" font-size="10">Auto CDC · SCD 1 · socle</text>
+        <text class="t mut" x="870" y="248" font-size="10">Auto CDC · SCD 1 · état courant</text>
         <circle class="badge" cx="856" cy="228" r="11"/><text class="badge-t" x="856" y="232.5" font-size="12">4</text>
 
         <rect class="goldrow" x="842" y="270" width="186" height="54" rx="8"/>
@@ -201,8 +201,8 @@
         <circle class="badge" cx="856" cy="290" r="11"/><text class="badge-t" x="856" y="294.5" font-size="12">5</text>
 
         <rect class="goldrow" x="842" y="440" width="186" height="54" rx="8"/>
-        <text class="tm" x="870" y="462" font-size="10">gold_hr_common_base</text>
-        <text class="t mut" x="870" y="480" font-size="10">Materialized View · socle</text>
+        <text class="tm" x="870" y="462" font-size="10">gold_employee_360</text>
+        <text class="t mut" x="870" y="480" font-size="10">Materialized View · vue 360°</text>
         <circle class="badge" cx="856" cy="460" r="11"/><text class="badge-t" x="856" y="464.5" font-size="12">6</text>
 
         <!-- Visual Data Prep -->
@@ -278,7 +278,7 @@
 
     <article class="card gold">
       <div class="chead"><span class="num">4</span><span class="tag">Gold · Auto CDC · SCD 1</span></div>
-      <h3>État courant : le socle</h3>
+      <h3>État courant par employé</h3>
       <p><b>Auto CDC</b> en SCD Type 1 : une ligne à jour par employé, ordonnée par <code>extract_ts</code>.</p>
       <div class="tbl">gold_employees_current</div>
     </article>
@@ -293,9 +293,9 @@
 
     <article class="card gold">
       <div class="chead"><span class="num">6</span><span class="tag">Gold · Materialized View</span></div>
-      <h3>Exposition du socle</h3>
+      <h3>Vue 360° employé</h3>
       <p>Une <b>Materialized View</b> assemble l'état courant et les KPI d'absence de l'année ; le résultat est stocké et rafraîchi à chaque update du pipeline.</p>
-      <div class="tbl">gold_hr_common_base</div>
+      <div class="tbl">gold_employee_360</div>
     </article>
 
     <article class="card prep">

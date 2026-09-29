@@ -1,7 +1,7 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC ## 1bis / Ingestion des événements d'Absence (Auto Loader depuis un Volume UC)
--- MAGIC #### Deuxième source du socle : un flux d'événements d'absence (maladie, congés, formation…).
+-- MAGIC #### Deuxième source : un flux d'événements d'absence (maladie, congés, formation…).
 -- MAGIC Même pattern que les employés : un dossier dédié du Volume, ingéré en streaming. Les nouveaux
 -- MAGIC fichiers déposés au fil de l'eau sont automatiquement pris en compte au run suivant.
 

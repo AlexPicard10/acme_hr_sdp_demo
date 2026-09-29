@@ -1,4 +1,4 @@
-# Pipeline LDP — HR Common Base
+# Pipeline LDP — HR 360
 
 Ordre du graphe (le pipeline résout les dépendances automatiquement) :
 
@@ -9,12 +9,12 @@ Ordre du graphe (le pipeline résout les dépendances automatiquement) :
 
 01-Employees/
   DLT-Employees-Silver.sql -> silver_employees          (Streaming Table + Expectations + join départements)
-  DLT-Employees-Gold.sql   -> gold_employees_current    (Auto CDC — SCD Type 1, état courant = socle)
+  DLT-Employees-Gold.sql   -> gold_employees_current    (Auto CDC — SCD Type 1, état courant)
                               gold_employees_history     (Auto CDC — SCD Type 2, historique mobilité)
 
 02-Absences/
   DLT-Absences-Silver.sql  -> silver_absences            (Streaming Table + Expectations, motif libre `comment`)
-  DLT-Gold-Common-Base.sql -> gold_hr_common_base        (Materialized View)
+  DLT-Gold-Employee-360.sql -> gold_employee_360        (Materialized View)
 ```
 
 Toutes les tables persistées sont en `CLUSTER BY AUTO` (liquid clustering automatique).

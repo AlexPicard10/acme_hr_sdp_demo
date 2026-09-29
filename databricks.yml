@@ -1,8 +1,8 @@
-# Databricks Asset Bundle — ACME HR "Common Base" SDP demo
+# Databricks Asset Bundle — ACME HR 360 SDP demo
 # Démo Data + Spark Declarative Pipelines (SDP / Lakeflow Declarative Pipelines) pour la montée en
 # compétence des équipes HR Data sur Databricks (société fictive ACME).
 #
-#   Volume UC (données brutes HR) ─► Auto Loader ─► SDP bronze→silver→gold ─► Materialized Views + View
+#   Volume UC (données brutes HR) ─► Auto Loader ─► SDP bronze→silver→gold ─► Materialized Views
 #   gouverné par Unity Catalog, déployé par ce bundle.
 #
 # https://docs.databricks.com/dev-tools/bundles/index.html

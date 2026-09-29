@@ -1,13 +1,13 @@
 -- Databricks notebook source
 -- MAGIC %md
--- MAGIC # HR "Common Base" — Lakeflow Declarative Pipeline (LDP)
+-- MAGIC # HR 360 — Lakeflow Declarative Pipeline (LDP)
 -- MAGIC ### Asset d'enablement — montée en compétence des équipes HR Data sur Databricks SDP (société fictive ACME)
 -- MAGIC
--- MAGIC Ce pipeline construit le **socle commun HR** : les extraits HR (type CESAM/SESAM)
+-- MAGIC Ce pipeline construit la **vue 360° des employés** : les extraits du SIRH
 -- MAGIC atterrissent dans un **Volume Unity Catalog** (un dossier par dataset), sont ingérés en **Auto Loader**,
 -- MAGIC puis consolidés en une table employés unique.
 -- MAGIC
--- MAGIC | Étape du socle | Fonctionnalité Lakeflow (SDP) |
+-- MAGIC | Étape | Fonctionnalité Lakeflow (SDP) |
 -- MAGIC |---|---|
 -- MAGIC | Ingestion des extraits (Volume UC) | **Streaming Table** + **Auto Loader** (`STREAM read_files`) — couche *bronze* |
 -- MAGIC | Nettoyage, typage, colonnes calculées | **Streaming Table** + **Expectations** — couche *silver* |

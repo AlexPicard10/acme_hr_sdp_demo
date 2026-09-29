@@ -1,10 +1,10 @@
-# ACME HR "Common Base" — Démo Data + Spark Declarative Pipelines (SDP)
+# ACME HR 360 — Démo Data + Spark Declarative Pipelines (SDP)
 
 Asset de démonstration pour **faire monter en compétence les équipes HR Data sur Databricks et les
 Spark Declarative Pipelines (SDP)**. Il construit, de bout en bout et avec des **données HR
-synthétiques**, un **socle commun HR** (*Common Base*) :
+synthétiques**, une **vue 360° des employés** (*HR 360*) :
 
-> extraits HR (type CESAM/SESAM) déposés dans un **Volume Unity Catalog** → ingestion **Auto Loader**
+> extraits du SIRH déposés dans un **Volume Unity Catalog** → ingestion **Auto Loader**
 > → **Spark Declarative Pipeline** (bronze → silver → gold) → agrégats **no-code** dans un **Visual
 > Data Prep** (avec **IA**) → **Materialized Views**, le tout gouverné par **Unity Catalog**
 > et déployé par un **Databricks Asset Bundle**.
@@ -17,29 +17,29 @@ fonctionnalité SDP dans un scénario métier HR réaliste.
 
 ## Ce que la démo illustre (fonctionnalités SDP)
 
-| Fonctionnalité SDP | Où | Rôle dans le socle (bronze→silver→gold) |
+| Fonctionnalité SDP | Où | Rôle dans le pipeline (bronze→silver→gold) |
 |---|---|---|
 | **Streaming Table** + **Auto Loader** (`STREAM read_files`) | `bronze_employees`, `bronze_absences` | Ingestion des données brutes — bronze |
 | **Expectations** (contrôles qualité déclaratifs) | `silver_employees`, `silver_absences` | Contrôles qualité — silver |
 | Colonnes calculées (`age_bracket`, `seniority_years`) + join référentiel | `silver_employees` | Préparation & enrichissement — silver |
 | **Auto CDC — SCD Type 1** (dernière version / employé) | `gold_employees_current` | Déduplication / dernière valeur — gold |
 | **Auto CDC — SCD Type 2** (historique mobilité) | `gold_employees_history` | Historisation — gold |
-| **Materialized View** (résultat stocké, rafraîchi par le pipeline) | `gold_hr_common_base` | Socle commun exposé aux consommateurs — gold |
+| **Materialized View** (résultat stocké, rafraîchi par le pipeline) | `gold_employee_360` | Vue 360° employé exposée aux consommateurs — gold |
 | **`CLUSTER BY AUTO`** (liquid clustering automatique) | toutes les tables du pipeline | Performance sans réglage manuel |
 | **Visual Data Prep** (Lakeflow Designer, no-code) → **Materialized Views** | `gold_headcount_by_department`, `gold_absenteeism_by_department` | Agrégats de consommation construits par un analyste — gold |
 | **AI Function** `ai_classify` (no-code) | `gold_absence_reasons_by_department` | Classement IA des motifs d'absence en texte libre |
-| **Job** DAB (pipeline → Visual Data Prep) | `hr_common_base_job` | Orchestration de bout en bout |
+| **Job** DAB (pipeline → Visual Data Prep) | `hr_360_job` | Orchestration de bout en bout |
 
 Scénario : **Employés + Absences + Départements** (effectifs, pyramide des âges, mixité,
 absentéisme, motifs d'absence).
 
 ## Architecture
 
-![Architecture du socle commun RH — Volume UC → Auto Loader → bronze → silver (Expectations) → gold (Auto CDC SCD1/SCD2, Materialized Views, View) → consommation gouvernée par Unity Catalog](docs/architecture.png)
+![Architecture HR 360 — Volume UC → Auto Loader → bronze → silver (Expectations) → gold (Auto CDC SCD1/SCD2, Materialized Views, View) → consommation gouvernée par Unity Catalog](docs/architecture.png)
 
 ```
 Volume UC  /Volumes/alp_demo_catalog/acme_hr/landing/
-   ├── employees/   extraits master employés (JSONL, GID stables)
+   ├── employees/   extraits master employés (JSONL, identifiants stables)
    └── absences/    événements d'absence (JSONL)
         │  Auto Loader
         ▼
@@ -47,9 +47,9 @@ BRONZE  bronze_employees · bronze_absences                     (streaming table
         ▼  nettoyage, typage, colonnes calculées, expectations, join acme_hr.departments
 SILVER  silver_employees · silver_absences                     (streaming tables + expectations)
         ▼
-GOLD    gold_employees_current        (Auto CDC SCD1 — le "socle commun")
+GOLD    gold_employees_current        (Auto CDC SCD1 — état courant)
         gold_employees_history        (Auto CDC SCD2 — historique)
-        gold_hr_common_base           (materialized view de consommation)
+        gold_employee_360           (materialized view de consommation)
         ▼  Visual Data Prep (Lakeflow Designer, no-code) — src/02-Visual-Data-Prep/
         gold_headcount_by_department        (materialized view)
         gold_absenteeism_by_department      (materialized view)
@@ -81,7 +81,7 @@ schéma `acme_hr`, le **Volume** `alp_demo_catalog.acme_hr.landing` (sous-dossie
 Exécuter le notebook `src/00-Utiles/01-Generate-HR-Data.py` dans le workspace, avec les widgets :
 `mode` = **`seed`** (charge initiale : ~2500 employés + 12 mois d'absences), `employees`, `catalog`,
 `schema`. Il écrit les extraits JSONL **directement dans le Volume** (`.../landing/employees|absences/`)
-et persiste le roster dans `.../landing/_state/roster.json` (GID stables entre les runs — indispensable
+et persiste le roster dans `.../landing/_state/roster.json` (identifiants stables entre les runs — indispensable
 pour démontrer le CDC / SCD).
 
 ```bash
@@ -119,8 +119,8 @@ l'historique des mobilités (SCD2, ordonné par `extract_ts`).
 
 ## Aller plus loin (optionnel)
 - **Dashboard AI/BI** sur `gold_headcount_by_department`, `gold_absenteeism_by_department` et
-  `gold_hr_common_base` (effectifs par BU, pyramide des âges, taux d'absentéisme par mois/type).
-- **Planifier** le job `hr_common_base_job` (schedule + notifications).
+  `gold_employee_360` (effectifs par BU, pyramide des âges, taux d'absentéisme par mois/type).
+- **Planifier** le job `hr_360_job` (schedule + notifications).
 - Ajouter d'autres sources HR (paie, formation) en réutilisant le même squelette bronze→silver→gold.
 
 ## Structure

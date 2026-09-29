@@ -1,6 +1,6 @@
 -- Databricks notebook source
 -- MAGIC %md
--- MAGIC # Exploration & validation — HR Common Base
+-- MAGIC # Exploration & validation — HR 360
 -- MAGIC Requêtes prêtes à l'emploi pour la démo/enablement, à lancer sur un SQL Warehouse après
 -- MAGIC exécution du pipeline. Remplacer `alp_demo_catalog.dev` par le schéma cible si besoin.
 
@@ -35,21 +35,21 @@ GROUP BY age_bracket ORDER BY age_bracket;
 
 
 -- Employés ayant connu au moins un changement historisé
-SELECT employee_gid FROM alp_demo_catalog.acme_hr.gold_employees_history
-GROUP BY employee_gid HAVING count(*) > 1
+SELECT employee_id FROM alp_demo_catalog.acme_hr.gold_employees_history
+GROUP BY employee_id HAVING count(*) > 1
 
 -- COMMAND ----------
 
-SELECT employee_gid, department_id, contract_type, job_title, __START_AT, __END_AT
+SELECT employee_id, department_id, contract_type, job_title, __START_AT, __END_AT
 FROM alp_demo_catalog.acme_hr.gold_employees_history
-WHERE employee_gid = 'GID0041944'
+WHERE employee_id = 'EMP0041944'
 ORDER BY __START_AT;
 
 
 -- COMMAND ----------
 
 -- MAGIC %md ## Materialized views (construites en no-code dans le Visual Data Prep)
--- MAGIC À lancer après le job `hr_common_base_job` (pipeline SDP → Visual Data Prep).
+-- MAGIC À lancer après le job `hr_360_job` (pipeline SDP → Visual Data Prep).
 
 -- COMMAND ----------
 
@@ -87,12 +87,12 @@ DESCRIBE DETAIL alp_demo_catalog.acme_hr.silver_absences;
 
 -- COMMAND ----------
 
--- MAGIC %md ## Materialized View — socle commun (consommation)
+-- MAGIC %md ## Materialized View — vue 360° employé (consommation)
 
 -- COMMAND ----------
 
-SELECT employee_gid, last_name, department_name, business_unit, age_bracket,
+SELECT employee_id, last_name, department_name, business_unit, age_bracket,
        seniority_years, absence_days_ytd
-FROM alp_demo_catalog.acme_hr.gold_hr_common_base
+FROM alp_demo_catalog.acme_hr.gold_employee_360
 ORDER BY absence_days_ytd DESC
 LIMIT 20;

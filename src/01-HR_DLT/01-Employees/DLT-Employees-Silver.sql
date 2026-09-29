@@ -4,19 +4,19 @@
 -- MAGIC #### Préparation & qualité : typage, colonnes calculées, contrôles qualité (Expectations).
 -- MAGIC Les **Expectations** (`CONSTRAINT ... EXPECT`) déclarent les règles qualité directement dans le
 -- MAGIC pipeline : lignes non conformes écartées (`DROP ROW`), échec bloquant sur clé manquante
--- MAGIC (`FAIL UPDATE`), ou simple avertissement. On y recrée aussi les **colonnes calculées** du socle
+-- MAGIC (`FAIL UPDATE`), ou simple avertissement. On y recrée aussi les **colonnes calculées** métier
 -- MAGIC (ex. `age_bracket`, `seniority_years`) et on **joint le référentiel départements** (master data).
 
 -- COMMAND ----------
 
 CREATE OR REFRESH STREAMING TABLE silver_employees
 (
-  CONSTRAINT valid_gid           EXPECT (employee_gid IS NOT NULL)                                 ON VIOLATION FAIL UPDATE,
-  CONSTRAINT valid_birth_date    EXPECT (birth_date IS NOT NULL AND birth_date > DATE'1940-01-01') ON VIOLATION DROP ROW,
-  CONSTRAINT valid_hire_date     EXPECT (hire_date IS NOT NULL AND hire_date >= birth_date)        ON VIOLATION DROP ROW,
-  CONSTRAINT plausible_age       EXPECT (age BETWEEN 16 AND 75)                                    ON VIOLATION DROP ROW,
-  CONSTRAINT known_department    EXPECT (department_name IS NOT NULL),
-  CONSTRAINT valid_contract      EXPECT (contract_type IN ('CDI','CDD','Alternance','Stage','Intérim'))
+  CONSTRAINT valid_employee_id EXPECT (employee_id IS NOT NULL)                                  ON VIOLATION FAIL UPDATE,
+  CONSTRAINT valid_birth_date  EXPECT (birth_date IS NOT NULL AND birth_date > DATE'1940-01-01') ON VIOLATION DROP ROW,
+  CONSTRAINT valid_hire_date   EXPECT (hire_date IS NOT NULL AND hire_date >= birth_date)        ON VIOLATION DROP ROW,
+  CONSTRAINT plausible_age     EXPECT (age BETWEEN 16 AND 75)                                    ON VIOLATION DROP ROW,
+  CONSTRAINT known_department  EXPECT (department_name IS NOT NULL),
+  CONSTRAINT valid_contract    EXPECT (contract_type IN ('CDI','CDD','Alternance','Stage','Intérim'))
 )
 CLUSTER BY AUTO
 COMMENT "Employés nettoyés, typés, enrichis (age_bracket, ancienneté) et joints au référentiel départements — couche silver"
@@ -29,7 +29,7 @@ SELECT
   d.region,
   d.country,
   d.cost_center,
-  -- Colonne calculée du socle commun : tranche d'âge dérivée (CASE WHEN, comme une recipe Prepare)
+  -- Colonne calculée : tranche d'âge dérivée (CASE WHEN)
   CASE
     WHEN b.age < 20 THEN '<20'
     WHEN b.age < 35 THEN '20-34'
@@ -46,7 +46,7 @@ SELECT
   END AS seniority_bracket
 FROM (
   SELECT
-    employee_gid,
+    employee_id,
     to_date(extract_date)                                             AS extract_date,
     to_timestamp(extract_ts)                                          AS extract_ts,  -- clé de séquence CDC (monotone)
     initcap(first_name)                                               AS first_name,
@@ -59,7 +59,7 @@ FROM (
     job_title,
     contract_type,
     work_location,
-    manager_gid,
+    manager_id,
     lower(email)                                                     AS email,
     CAST(fte AS DOUBLE)                                              AS fte,
     status,

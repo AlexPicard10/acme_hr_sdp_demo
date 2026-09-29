@@ -4,14 +4,14 @@
 # environment_version = "5"
 # ///
 # MAGIC %md
-# MAGIC # Générateur de données HR synthétiques — notebook (démo SDP "Common Base")
+# MAGIC # Générateur de données HR synthétiques — notebook (démo SDP « HR 360 »)
 # MAGIC
 # MAGIC Générateur de données HR synthétiques, pensé pour être exécuté **directement dans le workspace**
 # MAGIC (Git folder) — support de formation.
 # MAGIC
 # MAGIC - **Widgets** au lieu d'arguments CLI (`mode`, `employees`, `catalog`, `schema`).
 # MAGIC - Écrit les extraits JSONL **directement dans le Volume UC** (`.../landing/employees|absences/`).
-# MAGIC - Persiste le **roster dans le Volume** (`.../landing/_state/roster.json`) pour garder des GID
+# MAGIC - Persiste le **roster dans le Volume** (`.../landing/_state/roster.json`) pour garder des identifiants
 # MAGIC   stables entre les runs → indispensable pour démontrer le CDC / SCD (mode `increment`).
 # MAGIC
 # MAGIC > Prérequis : le schéma + le Volume `landing` existent (voir `00-MasterData-build.py`).
@@ -128,14 +128,14 @@ def build_roster(n):
         last = fake.last_name()
         birth_date, hire_date = _birth_hire_dates()
         roster.append({
-            "employee_gid": f"GID{i:07d}",
+            "employee_id": f"EMP{i:07d}",
             "first_name": first, "last_name": last, "gender": gender,
             "birth_date": birth_date, "hire_date": hire_date,
             "department_id": random.choice(DEPARTMENT_IDS),
             "job_title": random.choice(JOB_TITLES),
             "contract_type": random.choices(CONTRACT_TYPES)[0],
             "work_location": random.choice(WORK_LOCATIONS),
-            "manager_gid": f"GID{random.randint(1, max(1, n // 20)):07d}",
+            "manager_id": f"EMP{random.randint(1, max(1, n // 20)):07d}",
             "email": f"{first.lower()}.{last.lower()}@acme-demo.com".replace(" ", "").replace("'", ""),
             "fte": random.choice([1.0, 1.0, 1.0, 0.8, 0.5]),
             "status": "Active",
@@ -154,21 +154,21 @@ def mutate_roster(roster):
     for emp in random.sample(roster, k=max(1, len(roster) // 100)):            # CDD/Intérim -> CDI
         if emp["contract_type"] in ("CDD", "Intérim"):
             emp["contract_type"] = "CDI"
-    next_id = max(int(e["employee_gid"][3:]) for e in roster) + 1              # embauches
+    next_id = max(int(e["employee_id"][3:]) for e in roster) + 1              # embauches
     for j in range(random.randint(5, 20)):
         gender = random.choice(["F", "M"])
         first = fake.first_name_female() if gender == "F" else fake.first_name_male()
         last = fake.last_name()
         birth_date, _ = _birth_hire_dates()
         roster.append({
-            "employee_gid": f"GID{next_id + j:07d}",
+            "employee_id": f"EMP{next_id + j:07d}",
             "first_name": first, "last_name": last, "gender": gender,
             "birth_date": birth_date, "hire_date": dt.date.today().isoformat(),
             "department_id": random.choice(DEPARTMENT_IDS),
             "job_title": random.choice(JOB_TITLES),
             "contract_type": random.choices(CONTRACT_TYPES)[0],
             "work_location": random.choice(WORK_LOCATIONS),
-            "manager_gid": f"GID{random.randint(1, len(roster) // 20):07d}",
+            "manager_id": f"EMP{random.randint(1, len(roster) // 20):07d}",
             "email": f"{first.lower()}.{last.lower()}@acme-demo.com".replace(" ", "").replace("'", ""),
             "fte": 1.0, "status": "Active",
         })
@@ -202,7 +202,7 @@ def absence_events(roster, start, end, n_events):
         e = s + dt.timedelta(days=days - 1)
         events.append({
             "absence_id": f"ABS-{s.year}-{k:08d}",
-            "employee_gid": emp["employee_gid"],
+            "employee_id": emp["employee_id"],
             "absence_type": atype,
             "start_date": s.isoformat(),
             "end_date": e.isoformat(),
@@ -221,7 +221,7 @@ def absence_events(roster, start, end, n_events):
 # MAGIC Chaque ligne viole **une** contrainte silver, pour voir les métriques de qualité se remplir
 # MAGIC (lignes `DROP ROW` écartées, contraintes `warn` conservées mais comptées).
 # MAGIC
-# MAGIC > On **n'injecte pas** de violation des contraintes `FAIL UPDATE` (`valid_gid` côté employés,
+# MAGIC > On **n'injecte pas** de violation des contraintes `FAIL UPDATE` (`valid_employee_id` côté employés,
 # MAGIC > `valid_absence_id` côté absences) : elles feraient **échouer tout le pipeline**, ce qui n'est
 # MAGIC > pas le but ici. Pour démontrer un échec bloquant, l'injecter volontairement et à part.
 
@@ -233,26 +233,26 @@ def bad_employees(extract_date, extract_ts):
     base = {
         "first_name": "Test", "last_name": "Qualite", "gender": "F",
         "department_id": "D001", "job_title": "Analyste", "contract_type": "CDI",
-        "work_location": "Paris La Défense", "manager_gid": "GID0000001",
+        "work_location": "Paris La Défense", "manager_id": "EMP0000001",
         "email": "bad.record@acme-demo.com", "fte": 1.0, "status": "Active",
         "extract_date": extract_date, "extract_ts": extract_ts,
     }
     return [
         # plausible_age (trop jeune, ~10 ans) -> DROP ROW
-        {**base, "employee_gid": "GID9990001",
+        {**base, "employee_id": "EMP9990001",
          "birth_date": (today - dt.timedelta(days=10 * 365)).isoformat(), "hire_date": today.isoformat()},
         # plausible_age (trop âgé, ~81 ans ; né en 1945 donc valid_birth_date reste OK) -> DROP ROW
-        {**base, "employee_gid": "GID9990002", "birth_date": "1945-01-01", "hire_date": "1965-01-01"},
+        {**base, "employee_id": "EMP9990002", "birth_date": "1945-01-01", "hire_date": "1965-01-01"},
         # valid_birth_date (birth_date NULL) -> DROP ROW
         # (une date < 1940 déclencherait AUSSI plausible_age ; NULL isole la contrainte)
-        {**base, "employee_gid": "GID9990003", "birth_date": None, "hire_date": "1955-01-01"},
+        {**base, "employee_id": "EMP9990003", "birth_date": None, "hire_date": "1955-01-01"},
         # valid_hire_date (embauché avant la naissance) -> DROP ROW
-        {**base, "employee_gid": "GID9990004", "birth_date": "1990-01-01", "hire_date": "1985-01-01"},
+        {**base, "employee_id": "EMP9990004", "birth_date": "1990-01-01", "hire_date": "1985-01-01"},
         # known_department (département inconnu -> department_name NULL après join) -> WARN
-        {**base, "employee_gid": "GID9990005", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
+        {**base, "employee_id": "EMP9990005", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
          "department_id": "D999"},
         # valid_contract (type hors liste) -> WARN
-        {**base, "employee_gid": "GID9990006", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
+        {**base, "employee_id": "EMP9990006", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
          "contract_type": "Freelance"},
     ]
 
@@ -260,11 +260,11 @@ def bad_employees(extract_date, extract_ts):
 def bad_absences():
     """4 absences volontairement non conformes (hors valid_absence_id qui est FAIL UPDATE)."""
     y = dt.date.today().year
-    base = {"employee_gid": "GID0000001", "absence_type": "Maladie",
+    base = {"employee_id": "EMP0000001", "absence_type": "Maladie",
             "event_timestamp": dt.datetime.now().isoformat()}
     return [
-        # valid_employee (employee_gid NULL) -> DROP ROW
-        {**base, "absence_id": f"ABS-BAD-{y}-00000001", "employee_gid": None,
+        # valid_employee (employee_id NULL) -> DROP ROW
+        {**base, "absence_id": f"ABS-BAD-{y}-00000001", "employee_id": None,
          "start_date": f"{y}-01-10", "end_date": f"{y}-01-12", "days": 3},
         # valid_dates (end_date avant start_date) -> DROP ROW
         {**base, "absence_id": f"ABS-BAD-{y}-00000002",

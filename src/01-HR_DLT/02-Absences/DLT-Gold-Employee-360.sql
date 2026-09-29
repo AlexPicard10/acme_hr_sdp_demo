@@ -1,8 +1,8 @@
 -- Databricks notebook source
 -- MAGIC %md
--- MAGIC ## 6 / Socle commun — Materialized View de consommation (Unity Catalog)
+-- MAGIC ## 6 / Vue 360° employé — Materialized View de consommation (Unity Catalog)
 -- MAGIC #### Une **Materialized View** : le résultat est stocké et rafraîchi à chaque update du pipeline.
--- MAGIC C'est la table "socle commun" large exposée aux consommateurs (BI, apps, analystes) : l'état
+-- MAGIC C'est la table « vue 360° » large exposée aux consommateurs (BI, apps, analystes) : l'état
 -- MAGIC courant de chaque employé enrichi de ses KPI d'absence de l'année. On la matérialise car elle
 -- MAGIC est lue souvent et coûte une jointure + une agrégation : les lecteurs obtiennent un résultat
 -- MAGIC déjà calculé (et clusterisé automatiquement) au lieu de relancer la requête à chaque accès.
@@ -14,9 +14,9 @@
 
 -- COMMAND ----------
 
-CREATE OR REFRESH MATERIALIZED VIEW gold_hr_common_base
+CREATE OR REFRESH MATERIALIZED VIEW gold_employee_360
 CLUSTER BY AUTO
-COMMENT "Socle commun HR — vue consolidée employés (état courant) + KPI d'absence de l'année en cours"
+COMMENT "Vue 360° employé — consolidation (état courant) + KPI d'absence de l'année en cours"
 TBLPROPERTIES ('quality' = 'gold')
 AS
 SELECT
@@ -26,12 +26,12 @@ SELECT
 FROM gold_employees_current e
 LEFT JOIN (
   SELECT
-    employee_gid,
+    employee_id,
     SUM(days)  AS absence_days_ytd,
     COUNT(*)   AS absence_events_ytd
   FROM silver_absences
   WHERE YEAR(start_date) = YEAR(current_date())
-  GROUP BY employee_gid
+  GROUP BY employee_id
 ) ab
-  ON e.employee_gid = ab.employee_gid
+  ON e.employee_id = ab.employee_id
 WHERE e.status = 'Active';

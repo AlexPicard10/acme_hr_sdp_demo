@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # HR Common Base — Setup (schemas, Volume) + Build du master data (référentiel Départements)
+# MAGIC # HR 360 — Setup (schemas, Volume) + Build du master data (référentiel Départements)
 # MAGIC
 # MAGIC À exécuter **une fois** avant le pipeline LDP. Crée les schemas, le **Volume UC** qui reçoit les
 # MAGIC données brutes HR (déposées par le notebook `01-Generate-HR-Data.py`) et le référentiel stable
