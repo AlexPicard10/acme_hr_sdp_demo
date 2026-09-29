@@ -3,7 +3,7 @@
 # compétence des équipes HR Data sur Databricks (société fictive ACME).
 #
 #   Volume UC (données brutes HR) ─► Auto Loader ─► SDP bronze→silver→gold ─► Materialized Views + View
-#   gouverné par Unity Catalog, déployé par ce bundle, livré en CI/CD (voir .github/workflows/).
+#   gouverné par Unity Catalog, déployé par ce bundle.
 #
 # https://docs.databricks.com/dev-tools/bundles/index.html
 bundle:

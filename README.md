@@ -6,8 +6,8 @@ synthétiques**, un **socle commun HR** (*Common Base*) :
 
 > extraits HR (type CESAM/SESAM) déposés dans un **Volume Unity Catalog** → ingestion **Auto Loader**
 > → **Spark Declarative Pipeline** (bronze → silver → gold) → agrégats **no-code** dans un **Visual
-> Data Prep** (avec **IA**) → **Materialized Views** + **View**, le tout gouverné par **Unity Catalog**,
-> déployé par un **Databricks Asset Bundle** et livré en **CI/CD**.
+> Data Prep** (avec **IA**) → **Materialized Views** + **View**, le tout gouverné par **Unity Catalog**
+> et déployé par un **Databricks Asset Bundle**.
 
 Pensé comme **support d'atelier / d'enablement** : chaque étape est annotée et illustre une
 fonctionnalité SDP dans un scénario métier HR réaliste.
@@ -117,35 +117,6 @@ Seuls les nouveaux fichiers sont ingérés (Auto Loader, directory-listing sur l
 `gold_employees_current` reflète l'état à jour (SCD1) ; `gold_employees_history` accumule
 l'historique des mobilités (SCD2, ordonné par `extract_ts`).
 
-## CI/CD (GitHub Actions)
-
-Le projet illustre le cycle **DAB + CI/CD** typique d'un projet Databricks versionné dans Git :
-
-| Workflow | Déclencheur | Action |
-|---|---|---|
-| [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | Pull request vers `main` | `databricks bundle validate --target dev` |
-| [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Push / merge sur `main` | `databricks bundle validate` puis `deploy --target prod` |
-
-**Authentification CI** : machine-to-machine via **service principal OAuth**. Configurer 3 secrets
-(dépôt ou organisation GitHub) :
-
-| Secret | Valeur |
-|---|---|
-| `DATABRICKS_HOST` | `https://<your-workspace>.cloud.databricks.com` |
-| `DATABRICKS_CLIENT_ID` | Application ID du service principal |
-| `DATABRICKS_CLIENT_SECRET` | Secret OAuth du service principal |
-
-Le service principal doit avoir les droits de déploiement (pipelines, schéma `prod`) sur le
-workspace, plus `READ VOLUME` sur `alp_demo_catalog.acme_hr.landing`. Le CLI est installé
-par l'action officielle `databricks/setup-cli`. Le flux : *créer une branche → PR (validate) → merge
-sur main (deploy prod) → run du pipeline* (manuel ou décommenter l'étape "Run pipeline" dans `deploy.yml`).
-
-### Démo en local (équivalent des étapes CI/CD)
-```bash
-databricks bundle validate --target dev  --profile <your-profile>   # ce que fait la CI
-databricks bundle deploy   --target prod --profile <your-profile>   # ce que fait la CD
-```
-
 ## Aller plus loin (optionnel)
 - **Dashboard AI/BI** sur `gold_headcount_by_department`, `gold_absenteeism_by_department` et
   `gold_hr_common_base` (effectifs par BU, pyramide des âges, taux d'absentéisme par mois/type).
@@ -156,9 +127,7 @@ databricks bundle deploy   --target prod --profile <your-profile>   # ce que fai
 ```
 acme_hr_sdp_demo/
 ├── databricks.yml                     # bundle DAB clean (variables, targets dev/prod)
-├── .github/workflows/
-│   ├── validate.yml                   # CI : bundle validate sur PR
-│   └── deploy.yml                     # CD : bundle deploy sur merge main
+├── docs/                              # diagramme d'architecture
 ├── resources/
 │   └── hr_pipeline_dlt.pipeline.yml   # pipeline SDP serverless
 └── src/
