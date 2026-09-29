@@ -35,7 +35,7 @@ absentéisme, motifs d'absence).
 
 ## Architecture
 
-![Architecture HR 360 — Volume UC → Auto Loader → bronze → silver (Expectations) → gold (Auto CDC SCD1/SCD2, Materialized Views, View) → consommation gouvernée par Unity Catalog](docs/architecture.png)
+![Architecture HR 360 — Volume UC → Auto Loader → bronze → silver (Expectations) → gold SDP (Auto CDC SCD1/SCD2, Materialized View vue 360°) → Visual Data Prep no-code (Materialized Views + AI Function ai_classify) → consommation gouvernée par Unity Catalog](docs/hr360-architecture.png)
 
 ```
 Volume UC  /Volumes/alp_demo_catalog/acme_hr/landing/
@@ -127,7 +127,7 @@ l'historique des mobilités (SCD2, ordonné par `extract_ts`).
 ```
 acme_hr_sdp_demo/
 ├── databricks.yml                     # bundle DAB clean (variables, targets dev/prod)
-├── docs/                              # diagramme d'architecture
+├── docs/                              # diagramme d'architecture (PNG + source HTML)
 ├── resources/
 │   └── hr_pipeline_dlt.pipeline.yml   # pipeline SDP serverless
 └── src/
