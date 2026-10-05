@@ -20,9 +20,10 @@ CREATE FLOW bronze_absences_fr
 AS INSERT INTO bronze_absences BY NAME
 SELECT
   *,
-  'FR'                AS source_entity,
-  _metadata.file_path AS _source_file,
-  current_timestamp() AS _ingested_at
+  'FR'                             AS source_entity,
+  _metadata.file_path              AS _source_file,
+  _metadata.file_modification_time AS _source_file_ts,
+  current_timestamp()              AS _ingested_at
 FROM STREAM read_files(
   '${absences_path_fr}',
   format => 'json',
@@ -37,9 +38,10 @@ CREATE FLOW bronze_absences_be
 AS INSERT INTO bronze_absences BY NAME
 SELECT
   *,
-  'BE'                AS source_entity,
-  _metadata.file_path AS _source_file,
-  current_timestamp() AS _ingested_at
+  'BE'                             AS source_entity,
+  _metadata.file_path              AS _source_file,
+  _metadata.file_modification_time AS _source_file_ts,
+  current_timestamp()              AS _ingested_at
 FROM STREAM read_files(
   '${absences_path_be}',
   format => 'json',

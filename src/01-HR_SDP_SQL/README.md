@@ -1,4 +1,9 @@
-# Pipeline LDP — HR 360
+# Pipeline LDP — HR 360 (SQL)
+
+Pipeline `HR_360_SQL_<target>` → schéma `alp_demo_catalog.acme_hr_sql`. La même logique existe en
+Python dans [`../01-HR_SDP_Python/`](../01-HR_SDP_Python/README.md) (schéma `acme_hr_python`).
+Les requêtes sont écrites avec des **CTE** (`WITH … AS`) plutôt que des sous-requêtes : une étape =
+un nom, lecture de haut en bas.
 
 Ordre du graphe (le pipeline résout les dépendances automatiquement) :
 
@@ -21,10 +26,11 @@ Ordre du graphe (le pipeline résout les dépendances automatiquement) :
 Toutes les tables persistées sont en `CLUSTER BY AUTO` (liquid clustering automatique).
 
 Les agrégats de consommation (Materialized Views) sont construits **en no-code** hors pipeline, dans
-le Visual Data Prep `../02-Visual-Data-Prep/`, qui lit les tables silver/gold produites ici.
+le Visual Data Prep `../02-Visual-Data-Prep/`, qui lit les tables silver/gold produites ici
+(schéma `acme_hr_sql`).
 
 `03-Explorations/` n'est **pas** inclus dans le pipeline (requêtes de validation à lancer sur un
-SQL Warehouse).
+SQL Warehouse), dont la comparaison SQL vs Python.
 
 Fonctionnalités LDP illustrées : **Streaming Table**, **Auto Loader** (`STREAM read_files`),
 **Append Flows** (concaténation multi-sources), **Expectations**, **window functions** dans une

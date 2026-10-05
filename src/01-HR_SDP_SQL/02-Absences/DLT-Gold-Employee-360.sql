@@ -19,12 +19,8 @@ CLUSTER BY AUTO
 COMMENT "Vue 360° employé — consolidation (état courant) + KPI d'absence de l'année en cours"
 TBLPROPERTIES ('quality' = 'gold')
 AS
-SELECT
-  e.*,
-  COALESCE(ab.absence_days_ytd, 0)   AS absence_days_ytd,
-  COALESCE(ab.absence_events_ytd, 0) AS absence_events_ytd
-FROM gold_employees_current e
-LEFT JOIN (
+-- Étape 1 (CTE) : KPI d'absence de l'année en cours, par employé
+WITH absences_ytd AS (
   SELECT
     employee_id,
     SUM(days)  AS absence_days_ytd,
@@ -32,6 +28,13 @@ LEFT JOIN (
   FROM silver_absences
   WHERE YEAR(start_date) = YEAR(current_date())
   GROUP BY employee_id
-) ab
+)
+-- Étape 2 : état courant de chaque employé actif, enrichi des KPI
+SELECT
+  e.*,
+  COALESCE(ab.absence_days_ytd, 0)   AS absence_days_ytd,
+  COALESCE(ab.absence_events_ytd, 0) AS absence_events_ytd
+FROM gold_employees_current e
+LEFT JOIN absences_ytd ab
   ON e.employee_id = ab.employee_id
 WHERE e.status = 'Active';

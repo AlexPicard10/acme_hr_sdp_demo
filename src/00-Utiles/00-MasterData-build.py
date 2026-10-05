@@ -2,14 +2,20 @@
 # MAGIC %md
 # MAGIC # HR 360 — Setup (schéma, Volumes) + Build du master data (référentiel Départements)
 # MAGIC
-# MAGIC À exécuter **une fois** avant le pipeline LDP. Crée le schéma, les **deux Volumes UC** qui
-# MAGIC reçoivent les données brutes HR (déposées par le notebook `01-Generate-HR-Data.py`) et le
+# MAGIC À exécuter **une fois** avant les pipelines LDP. Crée les **trois schémas**, les **deux Volumes UC**
+# MAGIC qui reçoivent les données brutes HR (déposées par le notebook `01-Generate-HR-Data.py`) et le
 # MAGIC référentiel `departments`, partagé par le groupe et joint en couche silver.
+# MAGIC
+# MAGIC | Schéma | Contenu |
+# MAGIC |---|---|
+# MAGIC | `acme_hr` | données brutes et partagées : Volumes `landing_fr` / `landing_be`, référentiel `departments` |
+# MAGIC | `acme_hr_sql` | tables du pipeline SDP écrit en **SQL** (`src/01-HR_SDP_SQL`) + MV du Visual Data Prep |
+# MAGIC | `acme_hr_python` | tables du pipeline SDP écrit en **Python** (`src/01-HR_SDP_Python`), mêmes noms |
 # MAGIC
 # MAGIC **Deux filiales, deux stockages.** ACME France et ACME Belgique ont chacune leur SIRH et livrent
 # MAGIC leurs extraits (même structure) dans leur propre Volume : `landing_fr` et `landing_be`. Chaque
 # MAGIC Volume joue le rôle du « bucket » d'une filiale ; en production, ce seraient deux Volumes
-# MAGIC externes posés sur deux buckets. Le pipeline concatène les deux sources avec des Append Flows.
+# MAGIC externes posés sur deux buckets. Chaque pipeline concatène les deux sources avec des Append Flows.
 # MAGIC
 # MAGIC > Le catalog `alp_demo_catalog` existe déjà (créé côté votre workspace Databricks).
 # MAGIC > Le `department_id` ici doit correspondre à celui généré dans les extraits employés
@@ -18,8 +24,11 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Un schéma unique par démo (alp_demo_catalog accueillera d'autres démos).
+# MAGIC -- Données brutes et partagées (Volumes + master data)
 # MAGIC CREATE SCHEMA IF NOT EXISTS alp_demo_catalog.acme_hr;
+# MAGIC -- Un schéma cible par pipeline : la même logique écrite en SQL et en Python
+# MAGIC CREATE SCHEMA IF NOT EXISTS alp_demo_catalog.acme_hr_sql    COMMENT 'HR 360 — sorties du pipeline SDP SQL';
+# MAGIC CREATE SCHEMA IF NOT EXISTS alp_demo_catalog.acme_hr_python COMMENT 'HR 360 — sorties du pipeline SDP Python';
 # MAGIC -- Un Volume managé par filiale (un dossier par dataset : employees/, absences/)
 # MAGIC CREATE VOLUME IF NOT EXISTS alp_demo_catalog.acme_hr.landing_fr COMMENT 'Extraits SIRH — ACME France';
 # MAGIC CREATE VOLUME IF NOT EXISTS alp_demo_catalog.acme_hr.landing_be COMMENT 'Extraits SIRH — ACME Belgique';

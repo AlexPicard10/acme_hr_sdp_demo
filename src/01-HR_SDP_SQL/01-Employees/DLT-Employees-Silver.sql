@@ -6,6 +6,9 @@
 -- MAGIC pipeline : lignes non conformes écartées (`DROP ROW`), échec bloquant sur clé manquante
 -- MAGIC (`FAIL UPDATE`), ou simple avertissement. On y recrée aussi les **colonnes calculées** métier
 -- MAGIC (ex. `age_bracket`, `seniority_years`) et on **joint le référentiel départements** (master data).
+-- MAGIC
+-- MAGIC La requête est découpée en **CTE** (`WITH typed AS (…)`) plutôt qu'en sous-requête : chaque étape
+-- MAGIC porte un nom et se lit de haut en bas. Même plan d'exécution, donc mêmes performances.
 
 -- COMMAND ----------
 
@@ -23,29 +26,8 @@ CLUSTER BY AUTO
 COMMENT "Employés des 2 filiales nettoyés, typés, enrichis (age_bracket, ancienneté) et joints au référentiel départements — couche silver"
 TBLPROPERTIES ('quality' = 'silver')
 AS
-SELECT
-  b.*,
-  d.department_name,
-  d.business_unit,
-  d.region,
-  d.country,
-  d.cost_center,
-  -- Colonne calculée : tranche d'âge dérivée (CASE WHEN)
-  CASE
-    WHEN b.age < 20 THEN '<20'
-    WHEN b.age < 35 THEN '20-34'
-    WHEN b.age < 45 THEN '35-44'
-    WHEN b.age < 55 THEN '45-54'
-    ELSE '55+'
-  END AS age_bracket,
-  CASE
-    WHEN b.seniority_years < 2  THEN '0-2 ans'
-    WHEN b.seniority_years < 5  THEN '2-5 ans'
-    WHEN b.seniority_years < 10 THEN '5-10 ans'
-    WHEN b.seniority_years < 20 THEN '10-20 ans'
-    ELSE '20+ ans'
-  END AS seniority_bracket
-FROM (
+-- Étape 1 (CTE) : typage et colonnes dérivées des extraits bruts
+WITH typed AS (
   SELECT
     source_entity,                                                    -- filiale d'origine (FR / BE)
     employee_id,
@@ -56,19 +38,43 @@ FROM (
     initcap(first_name)                                               AS first_name,
     upper(last_name)                                                  AS last_name,
     gender,
-    to_date(birth_date)                                              AS birth_date,
+    to_date(birth_date)                                               AS birth_date,
     CAST(floor(datediff(current_date(), to_date(birth_date)) / 365.25) AS INT) AS age,
-    to_date(hire_date)                                              AS hire_date,
-    ROUND(datediff(current_date(), to_date(hire_date)) / 365.25, 1) AS seniority_years,
+    to_date(hire_date)                                                AS hire_date,
+    ROUND(datediff(current_date(), to_date(hire_date)) / 365.25, 1)   AS seniority_years,
     job_title,
     contract_type,
     work_location,
     manager_id,
-    lower(email)                                                     AS email,
-    CAST(fte AS DOUBLE)                                              AS fte,
+    lower(email)                                                      AS email,
+    CAST(fte AS DOUBLE)                                               AS fte,
     status,
     department_id
   FROM STREAM(bronze_employees)
-) b
+)
+-- Étape 2 : jointure au référentiel départements + tranches calculées
+SELECT
+  t.*,
+  d.department_name,
+  d.business_unit,
+  d.region,
+  d.country,
+  d.cost_center,
+  -- Colonne calculée : tranche d'âge dérivée (CASE WHEN)
+  CASE
+    WHEN t.age < 20 THEN '<20'
+    WHEN t.age < 35 THEN '20-34'
+    WHEN t.age < 45 THEN '35-44'
+    WHEN t.age < 55 THEN '45-54'
+    ELSE '55+'
+  END AS age_bracket,
+  CASE
+    WHEN t.seniority_years < 2  THEN '0-2 ans'
+    WHEN t.seniority_years < 5  THEN '2-5 ans'
+    WHEN t.seniority_years < 10 THEN '5-10 ans'
+    WHEN t.seniority_years < 20 THEN '10-20 ans'
+    ELSE '20+ ans'
+  END AS seniority_bracket
+FROM typed t
 LEFT JOIN ${master_data_schema}.departments d
-  ON b.department_id = d.department_id;
+  ON t.department_id = d.department_id;

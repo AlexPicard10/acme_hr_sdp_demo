@@ -6,7 +6,8 @@ synthétiques**, une **vue 360° des employés** (*HR 360*) :
 
 > extraits du SIRH de **deux filiales** déposés chacun dans son **Volume Unity Catalog** → ingestion
 > **Auto Loader** et concaténation par **Append Flows**
-> → **Spark Declarative Pipeline** (bronze → silver → gold) → agrégats **no-code** dans un **Visual
+> → **Spark Declarative Pipeline** (bronze → silver → gold), écrit **deux fois, en SQL et en Python**,
+> pour comparer les deux langages → agrégats **no-code** dans un **Visual
 > Data Prep** (avec **IA**) → **Materialized Views**, le tout gouverné par **Unity Catalog**
 > et déployé par un **Databricks Asset Bundle**.
 
@@ -29,6 +30,7 @@ fonctionnalité SDP dans un scénario métier HR réaliste.
 | **Auto CDC — SCD Type 2** (historique mobilité) | `gold_employees_history` | Historisation — gold |
 | **Materialized View** (résultat stocké, rafraîchi par le pipeline) | `gold_employee_360` | Vue 360° employé exposée aux consommateurs — gold |
 | **`CLUSTER BY AUTO`** (liquid clustering automatique) | toutes les tables du pipeline | Performance sans réglage manuel |
+| **SQL et Python** : même pipeline, deux langages (`pyspark.pipelines`) | schémas `acme_hr_sql` et `acme_hr_python` | Comparer les syntaxes ; résultats identiques vérifiables par `EXCEPT` |
 | **Visual Data Prep** (Lakeflow Designer, no-code) → **Materialized Views** | `gold_headcount_by_department`, `gold_absenteeism_by_department` | Agrégats de consommation construits par un analyste — gold |
 | **AI Function** `ai_classify` (no-code) | `gold_absence_reasons_by_department` | Classement IA des motifs d'absence en texte libre |
 | **Job** DAB (pipeline → Visual Data Prep) | `hr_360_job` | Orchestration de bout en bout |
@@ -39,7 +41,7 @@ partagé (effectifs, pyramide des âges, mixité, absentéisme, motifs d'absence
 
 ## Architecture
 
-![Architecture HR 360 — Volume UC → Auto Loader → bronze → silver (Expectations) → gold SDP (Auto CDC SCD1/SCD2, Materialized View vue 360°) → Visual Data Prep no-code (Materialized Views + AI Function ai_classify) → consommation gouvernée par Unity Catalog](docs/hr360-architecture.png)
+![Architecture HR 360 — 2 Volumes UC → Auto Loader + Append Flows → pipeline SDP en SQL (acme_hr_sql) et en Python (acme_hr_python) → bronze → silver (Expectations) → gold SDP (Auto CDC SCD1/SCD2, Materialized View vue 360°) → Visual Data Prep no-code (Materialized Views + AI Function ai_classify) → consommation gouvernée par Unity Catalog](docs/hr360-architecture-v2.png)
 
 ```
 Volume UC landing_fr (ACME France)        Volume UC landing_be (ACME Belgique)
@@ -49,6 +51,8 @@ Volume UC landing_fr (ACME France)        Volume UC landing_be (ACME Belgique)
         └──────────────────┬────────────────────────┘
                            ▼  Append Flows (concaténation, colonne source_entity)
 BRONZE  bronze_employees · bronze_absences                     (streaming tables)
+        │  2 pipelines, même logique :  HR_360_SQL → schéma acme_hr_sql
+        │                                HR_360_Python → schéma acme_hr_python
         ▼  nettoyage, typage, colonnes calculées, expectations, join acme_hr.departments
 SILVER  silver_employees · silver_absences                     (streaming tables + expectations)
         silver_employees_last_extract   (materialized view · ROW_NUMBER / LAG : dernière livraison)
@@ -56,15 +60,29 @@ SILVER  silver_employees · silver_absences                     (streaming table
 GOLD    gold_employees_current        (Auto CDC SCD1 — état courant)
         gold_employees_history        (Auto CDC SCD2 — historique)
         gold_employee_360           (materialized view de consommation)
-        ▼  Visual Data Prep (Lakeflow Designer, no-code) — src/02-Visual-Data-Prep/
+        ▼  Visual Data Prep (Lakeflow Designer, no-code) — src/02-Visual-Data-Prep/ (lit et écrit acme_hr_sql)
         gold_headcount_by_department        (materialized view)
         gold_absenteeism_by_department      (materialized view)
         gold_absence_reasons_by_department  (materialized view · AI Function ai_classify)
 ```
 
-Catalog `alp_demo_catalog` · schéma unique `acme_hr` · référentiel `departments` ·
-données brutes dans les Volumes `alp_demo_catalog.acme_hr.landing_fr` et `landing_be`. Tables préfixées par couche
-(`bronze_` / `silver_` / `gold_`). Les autres démos auront leur propre schéma dans ce catalog.
+Catalog `alp_demo_catalog`, trois schémas :
+
+| Schéma | Contenu |
+|---|---|
+| `acme_hr` | sources communes : Volumes `landing_fr` / `landing_be` (données brutes), référentiel `departments` |
+| `acme_hr_sql` | tables du pipeline **SQL** (`src/01-HR_SDP_SQL`) + Materialized Views du Visual Data Prep |
+| `acme_hr_python` | tables du pipeline **Python** (`src/01-HR_SDP_Python`) — mêmes noms qu'en SQL |
+
+Tables préfixées par couche (`bronze_` / `silver_` / `gold_`).
+
+### SQL ou Python ?
+
+Les deux pipelines lisent les mêmes Volumes et produisent les mêmes tables. Le tableau d'équivalence
+complet est dans [`src/01-HR_SDP_Python/README.md`](src/01-HR_SDP_Python/README.md). En bref :
+**SQL** pour la lisibilité et les équipes orientées requêtes ; **Python** pour factoriser (une
+fonction d'ingestion réutilisée, des flows générés par une boucle), tester unitairement, et pour les
+fonctionnalités réservées à Python (sinks, Auto CDC depuis des snapshots, sources personnalisées).
 
 ## Prérequis
 
@@ -81,13 +99,14 @@ Tout se fait **dans l'UI du workspace Databricks** : aucun outil à installer en
 
 ## Déroulé (pas à pas)
 
-> **Vous venez d'une version précédente de la démo** (un seul Volume `landing`) ? Le schéma des
-> données a changé : supprimez l'ancien Volume `landing` (ou tout le schéma `acme_hr`), rejouez les
-> étapes 1 et 2, puis lancez le pipeline en **full refresh** à l'étape 3.
+> **Vous venez d'une version précédente de la démo** (tables du pipeline dans `acme_hr`, un seul
+> Volume `landing`) ? Supprimez le schéma `acme_hr` (`DROP SCHEMA alp_demo_catalog.acme_hr CASCADE`),
+> puis rejouez toutes les étapes. Au Deploy, l'ancien pipeline `HR_360_Pipeline_dev` est remplacé
+> par `HR_360_SQL_dev` et `HR_360_Python_dev`.
 
 ### 1. Setup Unity Catalog (schéma + Volumes) & master data
 Dans le Git folder, ouvrir le notebook `src/00-Utiles/00-MasterData-build` et faire **Run all**. Il crée
-le schéma `acme_hr`, les **Volumes** `landing_fr` et `landing_be` (un par filiale, sous-dossiers
+les schémas `acme_hr`, `acme_hr_sql` et `acme_hr_python`, les **Volumes** `landing_fr` et `landing_be` (un par filiale, sous-dossiers
 `employees/` et `absences/`) et le référentiel `alp_demo_catalog.acme_hr.departments`.
 
 ### 2. Générer et charger les données brutes dans le Volume
@@ -105,23 +124,25 @@ aussi environ 2 % d'employés en plusieurs versions (corrections dans la journé
 la matière de l'exemple de fonction de fenêtre. Vérification : **Catalog Explorer →
 `alp_demo_catalog` → `acme_hr` → Volumes**.
 
-### 3. Déployer et lancer le pipeline (UI du bundle)
-Le pipeline est décrit par le **bundle** (`databricks.yml` et `resources/hr_pipeline_dlt.pipeline.yml`) ;
-on le déploie depuis l'UI, sans CLI.
+### 3. Déployer et lancer les pipelines (UI du bundle)
+Les deux pipelines sont décrits par le **bundle** (`databricks.yml`, `resources/hr_pipeline_sql.pipeline.yml`
+et `resources/hr_pipeline_python.pipeline.yml`) ; on les déploie depuis l'UI, sans CLI.
 
 1. Dans le Git folder, ouvrir `databricks.yml`, puis le panneau **Deployments** (icône 🚀 dans la barre
    latérale de l'éditeur).
-2. Choisir la cible **`dev`** et cliquer **Deploy**. Le panneau liste les ressources créées : le
-   pipeline `[dev <votre_nom>] HR_360_Pipeline_dev`.
-3. Dans ce même panneau, cliquer **Run** sur `hr_pipeline_dlt` (ou ouvrir le pipeline puis **Start**).
-4. Suivre le graphe : bronze → silver → gold. L'onglet **Data quality** montre les lignes rejetées
-   par les Expectations.
+2. Choisir la cible **`dev`** et cliquer **Deploy**. Le panneau liste les ressources créées : les
+   pipelines `[dev <votre_nom>] HR_360_SQL_dev` et `[dev <votre_nom>] HR_360_Python_dev`.
+3. Dans ce même panneau, cliquer **Run** sur `hr_pipeline_sql`, puis sur `hr_pipeline_python` (ils
+   peuvent tourner en parallèle), ou ouvrir chaque pipeline puis **Start**.
+4. Suivre les graphes : bronze → silver → gold. Ils sont identiques d'un langage à l'autre. L'onglet
+   **Data quality** montre les lignes rejetées par les Expectations (mêmes noms, mêmes compteurs).
 
 > En cible `dev`, le déploiement est **lié à la source** : le pipeline lit directement les fichiers
-> SQL du Git folder. Une modification du code est prise en compte au run suivant, sans redéployer.
+> SQL et Python du Git folder. Une modification du code est prise en compte au run suivant, sans redéployer.
 
 > **Alternative CLI** (optionnelle) : `databricks bundle deploy -t dev` puis
-> `databricks bundle run hr_pipeline_dlt -t dev`, avec un profil CLI authentifié.
+> `databricks bundle run hr_pipeline_sql -t dev` et `databricks bundle run hr_pipeline_python -t dev`,
+> avec un profil CLI authentifié.
 
 ### 4. Construire les agrégats en no-code (Visual Data Prep + IA)
 Suivre le guide [`src/02-Visual-Data-Prep/README.md`](src/02-Visual-Data-Prep/README.md) : dans
@@ -130,13 +151,14 @@ d'absentéisme, et classe les motifs d'absence en texte libre avec l'opérateur 
 (`ai_classify`). Un prompt **Genie Code** prêt à coller permet de générer le canvas.
 
 ### 5. Explorer les résultats
-Lancer les requêtes de `src/01-HR_DLT/03-Explorations/hr_exploration.sql` sur un SQL Warehouse
-(streaming tables, SCD1/SCD2, materialized views, motifs classés par l'IA, vue 360° employé).
+Lancer les requêtes de `src/01-HR_SDP_SQL/03-Explorations/hr_exploration.sql` sur un SQL Warehouse
+(streaming tables, SCD1/SCD2, materialized views, motifs classés par l'IA, vue 360° employé). La
+section **« SQL vs Python »** vérifie que les deux pipelines donnent les mêmes résultats.
 
 ### 6. Démontrer l'incrémental + le CDC
 Relancer le notebook `01-Generate-HR-Data` avec le widget `mode` = **`increment`** : il produit un
 nouvel extrait employés (mobilités / embauches / départs) daté d'un `extract_ts` plus récent. Puis
-relancer le pipeline avec **Run** dans le panneau Deployments, ou **Start** sur le pipeline. Il faut
+relancer les pipelines avec **Run** dans le panneau Deployments, ou **Start** sur chaque pipeline. Il faut
 un run **normal**, pas une full refresh.
 
 Seuls les nouveaux fichiers sont ingérés (Auto Loader, directory-listing sur le Volume).
@@ -155,15 +177,18 @@ acme_hr_sdp_demo/
 ├── databricks.yml                     # bundle DAB clean (variables, targets dev/prod)
 ├── docs/                              # diagramme d'architecture (PNG + source HTML)
 ├── resources/
-│   └── hr_pipeline_dlt.pipeline.yml   # pipeline SDP serverless
+│   ├── hr_pipeline_sql.pipeline.yml     # pipeline SDP SQL serverless    → schéma acme_hr_sql
+│   └── hr_pipeline_python.pipeline.yml  # pipeline SDP Python serverless → schéma acme_hr_python
 └── src/
     ├── 00-Utiles/
-    │   ├── 00-MasterData-build.py     # setup : schémas + Volume + référentiel departments
+    │   ├── 00-MasterData-build.py     # setup : 3 schémas + 2 Volumes + référentiel departments
     │   └── 01-Generate-HR-Data.py     # générateur HR synthétique en NOTEBOOK (widgets, écrit dans le Volume)
-    ├── 01-HR_DLT/
-    │   ├── 00-Data-Sources/           # bronze (Auto Loader)
-    │   ├── 01-Employees/              # silver + gold (SCD1/SCD2)
-    │   ├── 02-Absences/               # silver + view de consommation
-    │   └── 03-Explorations/           # requêtes de validation (hors pipeline)
+    ├── 01-HR_SDP_SQL/                 # pipeline en SQL
+    │   ├── 00-Data-Sources/           # bronze (Auto Loader + Append Flows)
+    │   ├── 01-Employees/              # silver + window functions + gold (SCD1/SCD2)
+    │   ├── 02-Absences/               # silver + MV vue 360°
+    │   └── 03-Explorations/           # requêtes de validation, dont SQL vs Python (hors pipeline)
+    ├── 01-HR_SDP_Python/              # même pipeline en Python (même arborescence)
+    │   └── utilities/                 # fonction d'ingestion partagée (importée, hors pipeline)
     └── 02-Visual-Data-Prep/           # agrégats no-code + IA (Lakeflow Designer) — voir son README
 ```

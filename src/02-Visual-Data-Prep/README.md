@@ -1,6 +1,6 @@
 # Visual Data Prep : agrégats gold en no-code + IA (Lakeflow Designer)
 
-Le pipeline SDP (`src/01-HR_DLT/`) produit les tables fiables : `silver_absences`,
+Le pipeline SDP SQL (`src/01-HR_SDP_SQL/`, schéma `acme_hr_sql`) produit les tables fiables : `silver_absences`,
 `gold_employees_current` (SCD1), `gold_employees_history` (SCD2) et la materialized view `gold_employee_360`.
 
 Les **agrégats de consommation** sont construits **sans code**, dans un **Visual Data Prep**
@@ -26,7 +26,7 @@ Il est orchestré après le pipeline par le job DAB `hr_360_job`.
 - Lakeflow Designer disponible : **+ New → Visual data prep**. Si l'option n'apparaît pas, un admin
   l'active dans les **Previews** du workspace.
 - Le pipeline SDP a tourné : `silver_absences` (avec la colonne `comment`) et `gold_employees_current`
-  existent dans `alp_demo_catalog.acme_hr`.
+  existent dans `alp_demo_catalog.acme_hr_sql`.
 - Compute **serverless** et droit d'utiliser les AI Functions (endpoints Foundation Model).
 
 ## Construction pas à pas
@@ -36,7 +36,7 @@ puis le nommer `hr_gold_kpis`. Créer ensuite un **Group** par sortie (A, B, C) 
 
 ### A. Effectifs par département → `gold_headcount_by_department`
 
-1. **Source** : table `alp_demo_catalog.acme_hr.gold_employees_current`.
+1. **Source** : table `alp_demo_catalog.acme_hr_sql.gold_employees_current`.
 2. **Filter** : `status = 'Active'` (garder la sortie *Included*).
 3. **Prepare → Formula**, deux colonnes :
    - `is_cdi` = `CASE WHEN contract_type = 'CDI' THEN 1 ELSE 0 END`
@@ -49,15 +49,15 @@ puis le nommer `hr_gold_kpis`. Créer ensuite un **Group** par sortie (A, B, C) 
    - `SUM(is_female)` → `female_count`
 5. **Prepare → Formula** : `female_pct` = `ROUND(100.0 * female_count / headcount, 1)`
    (et `ROUND(avg_age, 1)`, `ROUND(avg_seniority_years, 1)` si souhaité).
-6. **Output** : **Materialized view**, catalog `alp_demo_catalog`, schéma `acme_hr`,
+6. **Output** : **Materialized view**, catalog `alp_demo_catalog`, schéma `acme_hr_sql`,
    nom `gold_headcount_by_department`.
 
 Résultat attendu : **12 lignes**, une par département.
 
 ### B. Absentéisme par département / mois / type → `gold_absenteeism_by_department`
 
-1. **Source** : `alp_demo_catalog.acme_hr.silver_absences`.
-2. **Source** : `alp_demo_catalog.acme_hr.gold_employees_current` (on peut réutiliser celle de A).
+1. **Source** : `alp_demo_catalog.acme_hr_sql.silver_absences`.
+2. **Source** : `alp_demo_catalog.acme_hr_sql.gold_employees_current` (on peut réutiliser celle de A).
 3. **Join** *Inner* sur `employee_id`. Garder côté absences : `employee_id`, `absence_month`,
    `absence_type`, `days` ; côté employés : `department_id`, `department_name`, `business_unit`.
 4. **Aggregate** : group by `department_id`, `department_name`, `business_unit`, `absence_month`,
@@ -66,7 +66,7 @@ Résultat attendu : **12 lignes**, une par département.
    - `COUNT(*)` → `absence_events`
    - `SUM(days)` → `total_absence_days`
    - `AVG(days)` → `avg_days_per_absence`
-5. **Output** : **Materialized view** `alp_demo_catalog.acme_hr.gold_absenteeism_by_department`.
+5. **Output** : **Materialized view** `alp_demo_catalog.acme_hr_sql.gold_absenteeism_by_department`.
 
 ### C. Motifs d'absence classés par l'IA → `gold_absence_reasons_by_department`
 
@@ -87,7 +87,7 @@ catégories exploitables par les RH.
 6. **Aggregate** : group by `department_name`, `business_unit`, `reason_category`.
    - `COUNT(*)` → `absence_events`
    - `SUM(days)` → `total_absence_days`
-7. **Output** : **Materialized view** `alp_demo_catalog.acme_hr.gold_absence_reasons_by_department`.
+7. **Output** : **Materialized view** `alp_demo_catalog.acme_hr_sql.gold_absence_reasons_by_department`.
 
 ### (Option) Contrôle qualité no-code
 
@@ -99,7 +99,7 @@ Avant l'Output de C, ajouter un opérateur **Guardrails** : `reason_category` *N
 Ouvrir **Genie Code** dans Designer et coller :
 
 ```text
-Dans le catalog alp_demo_catalog, schéma acme_hr, construis trois flux, chacun dans son propre groupe :
+Dans le catalog alp_demo_catalog, schéma acme_hr_sql, construis trois flux, chacun dans son propre groupe :
 
 A) À partir de gold_employees_current filtré sur status = 'Active', calcule par department_id,
 department_name, business_unit, region : headcount (nombre d'employés), avg_age, avg_seniority_years

@@ -2,8 +2,9 @@
 # Démo Data + Spark Declarative Pipelines (SDP / Lakeflow Declarative Pipelines) pour la montée en
 # compétence des équipes HR Data sur Databricks (société fictive ACME).
 #
-#   Volume UC (données brutes HR) ─► Auto Loader ─► SDP bronze→silver→gold ─► Materialized Views
-#   gouverné par Unity Catalog, déployé par ce bundle.
+#   Volumes UC (données brutes HR) ─► Auto Loader ─► SDP bronze→silver→gold ─► Materialized Views
+#   La même logique est écrite deux fois : pipeline SQL (schéma acme_hr_sql) et pipeline Python
+#   (schéma acme_hr_python). Gouverné par Unity Catalog, déployé par ce bundle.
 #
 # https://docs.databricks.com/dev-tools/bundles/index.html
 bundle:
@@ -17,21 +18,26 @@ include:
 variables:
   catalog:
     default: "alp_demo_catalog"
-  # Un schéma unique par démo (alp_demo_catalog accueillera d'autres démos).
-  schema:
+  # Schéma des données brutes et partagées : Volumes landing_fr / landing_be + référentiel departments.
+  raw_schema:
     default: "acme_hr"
+  # Un schéma cible par pipeline : mêmes noms de tables, deux langages.
+  schema_sql:
+    default: "acme_hr_sql"
+  schema_python:
+    default: "acme_hr_python"
   master_data_schema:
-    default: "alp_demo_catalog.acme_hr"
+    default: "${var.catalog}.${var.raw_schema}"
   # Données brutes HR : un Volume Unity Catalog par filiale (le « bucket » de chaque SIRH),
-  # un dossier par dataset. Le pipeline concatène les deux sources avec des Append Flows.
+  # un dossier par dataset. Chaque pipeline concatène les deux sources avec des Append Flows.
   employees_path_fr:
-    default: "/Volumes/alp_demo_catalog/acme_hr/landing_fr/employees"
+    default: "/Volumes/${var.catalog}/${var.raw_schema}/landing_fr/employees"
   employees_path_be:
-    default: "/Volumes/alp_demo_catalog/acme_hr/landing_be/employees"
+    default: "/Volumes/${var.catalog}/${var.raw_schema}/landing_be/employees"
   absences_path_fr:
-    default: "/Volumes/alp_demo_catalog/acme_hr/landing_fr/absences"
+    default: "/Volumes/${var.catalog}/${var.raw_schema}/landing_fr/absences"
   absences_path_be:
-    default: "/Volumes/alp_demo_catalog/acme_hr/landing_be/absences"
+    default: "/Volumes/${var.catalog}/${var.raw_schema}/landing_be/absences"
   dlt_development_mode:
     default: true
 
