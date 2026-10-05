@@ -1,10 +1,15 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # HR 360 — Setup (schemas, Volume) + Build du master data (référentiel Départements)
+# MAGIC # HR 360 — Setup (schéma, Volumes) + Build du master data (référentiel Départements)
 # MAGIC
-# MAGIC À exécuter **une fois** avant le pipeline LDP. Crée les schemas, le **Volume UC** qui reçoit les
-# MAGIC données brutes HR (déposées par le notebook `01-Generate-HR-Data.py`) et le référentiel stable
-# MAGIC `departments` (joint en couche silver). Table de référentiel (master data) jointe en couche silver.
+# MAGIC À exécuter **une fois** avant le pipeline LDP. Crée le schéma, les **deux Volumes UC** qui
+# MAGIC reçoivent les données brutes HR (déposées par le notebook `01-Generate-HR-Data.py`) et le
+# MAGIC référentiel `departments`, partagé par le groupe et joint en couche silver.
+# MAGIC
+# MAGIC **Deux filiales, deux stockages.** ACME France et ACME Belgique ont chacune leur SIRH et livrent
+# MAGIC leurs extraits (même structure) dans leur propre Volume : `landing_fr` et `landing_be`. Chaque
+# MAGIC Volume joue le rôle du « bucket » d'une filiale ; en production, ce seraient deux Volumes
+# MAGIC externes posés sur deux buckets. Le pipeline concatène les deux sources avec des Append Flows.
 # MAGIC
 # MAGIC > Le catalog `alp_demo_catalog` existe déjà (créé côté votre workspace Databricks).
 # MAGIC > Le `department_id` ici doit correspondre à celui généré dans les extraits employés
@@ -15,8 +20,9 @@
 # MAGIC %sql
 # MAGIC -- Un schéma unique par démo (alp_demo_catalog accueillera d'autres démos).
 # MAGIC CREATE SCHEMA IF NOT EXISTS alp_demo_catalog.acme_hr;
-# MAGIC -- Volume managé qui reçoit les extraits HR bruts (un dossier par dataset : employees/, absences/)
-# MAGIC CREATE VOLUME IF NOT EXISTS alp_demo_catalog.acme_hr.landing;
+# MAGIC -- Un Volume managé par filiale (un dossier par dataset : employees/, absences/)
+# MAGIC CREATE VOLUME IF NOT EXISTS alp_demo_catalog.acme_hr.landing_fr COMMENT 'Extraits SIRH — ACME France';
+# MAGIC CREATE VOLUME IF NOT EXISTS alp_demo_catalog.acme_hr.landing_be COMMENT 'Extraits SIRH — ACME Belgique';
 
 # COMMAND ----------
 

@@ -21,6 +21,7 @@ COMMENT "Événements d'absence nettoyés et typés — couche silver"
 TBLPROPERTIES ('quality' = 'silver')
 AS
 SELECT
+  source_entity,                            -- filiale d'origine (FR / BE)
   absence_id,
   employee_id,
   absence_type,

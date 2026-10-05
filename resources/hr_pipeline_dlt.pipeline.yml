@@ -5,8 +5,10 @@ resources:
       # Ces valeurs sont lisibles dans le code SQL via ${nom} (spark.conf).
       configuration:
         "master_data_schema": ${var.master_data_schema}
-        "employees_path": ${var.employees_path}
-        "absences_path": ${var.absences_path}
+        "employees_path_fr": ${var.employees_path_fr}
+        "employees_path_be": ${var.employees_path_be}
+        "absences_path_fr": ${var.absences_path_fr}
+        "absences_path_be": ${var.absences_path_be}
       libraries:
         - glob:
             include: ../src/01-HR_DLT/00-Data-Sources/**

@@ -22,11 +22,16 @@ variables:
     default: "acme_hr"
   master_data_schema:
     default: "alp_demo_catalog.acme_hr"
-  # Données brutes HR déposées dans un Volume Unity Catalog (un dossier par dataset — voir README).
-  employees_path:
-    default: "/Volumes/alp_demo_catalog/acme_hr/landing/employees"
-  absences_path:
-    default: "/Volumes/alp_demo_catalog/acme_hr/landing/absences"
+  # Données brutes HR : un Volume Unity Catalog par filiale (le « bucket » de chaque SIRH),
+  # un dossier par dataset. Le pipeline concatène les deux sources avec des Append Flows.
+  employees_path_fr:
+    default: "/Volumes/alp_demo_catalog/acme_hr/landing_fr/employees"
+  employees_path_be:
+    default: "/Volumes/alp_demo_catalog/acme_hr/landing_be/employees"
+  absences_path_fr:
+    default: "/Volumes/alp_demo_catalog/acme_hr/landing_fr/absences"
+  absences_path_be:
+    default: "/Volumes/alp_demo_catalog/acme_hr/landing_be/absences"
   dlt_development_mode:
     default: true
 

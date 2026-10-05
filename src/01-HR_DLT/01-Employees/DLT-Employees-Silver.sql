@@ -16,10 +16,11 @@ CREATE OR REFRESH STREAMING TABLE silver_employees
   CONSTRAINT valid_hire_date   EXPECT (hire_date IS NOT NULL AND hire_date >= birth_date)        ON VIOLATION DROP ROW,
   CONSTRAINT plausible_age     EXPECT (age BETWEEN 16 AND 75)                                    ON VIOLATION DROP ROW,
   CONSTRAINT known_department  EXPECT (department_name IS NOT NULL),
-  CONSTRAINT valid_contract    EXPECT (contract_type IN ('CDI','CDD','Alternance','Stage','Intérim'))
+  CONSTRAINT valid_contract    EXPECT (contract_type IN ('CDI','CDD','Alternance','Stage','Intérim')),
+  CONSTRAINT valid_entity      EXPECT (source_entity IN ('FR','BE'))                             ON VIOLATION DROP ROW
 )
 CLUSTER BY AUTO
-COMMENT "Employés nettoyés, typés, enrichis (age_bracket, ancienneté) et joints au référentiel départements — couche silver"
+COMMENT "Employés des 2 filiales nettoyés, typés, enrichis (age_bracket, ancienneté) et joints au référentiel départements — couche silver"
 TBLPROPERTIES ('quality' = 'silver')
 AS
 SELECT
@@ -46,9 +47,12 @@ SELECT
   END AS seniority_bracket
 FROM (
   SELECT
+    source_entity,                                                    -- filiale d'origine (FR / BE)
     employee_id,
     to_date(extract_date)                                             AS extract_date,
-    to_timestamp(extract_ts)                                          AS extract_ts,  -- clé de séquence CDC (monotone)
+    to_timestamp(extract_ts)                                          AS extract_ts,  -- ordonne les fichiers entre eux
+    to_timestamp(updated_at)                                          AS updated_at,  -- ordonne les versions dans un fichier
+    _source_file,                                                     -- fichier d'origine (cf. silver_employees_last_extract)
     initcap(first_name)                                               AS first_name,
     upper(last_name)                                                  AS last_name,
     gender,

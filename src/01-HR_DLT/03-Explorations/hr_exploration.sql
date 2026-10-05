@@ -2,7 +2,7 @@
 -- MAGIC %md
 -- MAGIC # Exploration & validation — HR 360
 -- MAGIC Requêtes prêtes à l'emploi pour la démo/enablement, à lancer sur un SQL Warehouse après
--- MAGIC exécution du pipeline. Remplacer `alp_demo_catalog.dev` par le schéma cible si besoin.
+-- MAGIC exécution du pipeline. Adapter `alp_demo_catalog.acme_hr` à votre catalog / schéma si besoin.
 
 -- COMMAND ----------
 
@@ -12,6 +12,71 @@
 
 SELECT count(*) AS bronze_rows FROM alp_demo_catalog.acme_hr.bronze_employees;
 SELECT * FROM alp_demo_catalog.acme_hr.silver_employees LIMIT 20;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## Concaténation des 2 filiales (Append Flows)
+-- MAGIC Une seule table bronze, alimentée par un flow par Volume : `source_entity` indique l'origine.
+
+-- COMMAND ----------
+
+SELECT source_entity, count(*) AS lignes, count(DISTINCT _source_file) AS fichiers,
+       count(DISTINCT employee_id) AS employes
+FROM alp_demo_catalog.acme_hr.bronze_employees
+GROUP BY source_entity ORDER BY source_entity;
+
+SELECT source_entity, count(*) AS absences
+FROM alp_demo_catalog.acme_hr.bronze_absences
+GROUP BY source_entity ORDER BY source_entity;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## Dernière livraison dédupliquée (window functions)
+-- MAGIC `silver_employees_last_extract` : une ligne par employé dans le dernier fichier de chaque filiale.
+
+-- COMMAND ----------
+
+-- Doublons intra-fichier : combien d'employés avaient plusieurs versions dans le dernier fichier ?
+SELECT source_entity, versions_in_file, count(*) AS employes
+FROM alp_demo_catalog.acme_hr.silver_employees_last_extract
+GROUP BY source_entity, versions_in_file
+ORDER BY source_entity, versions_in_file;
+
+-- Ce que les corrections intra-journée ont changé (LAG)
+SELECT source_entity, employee_id, versions_in_file,
+       previous_department_id, department_id, previous_job_title, job_title, updated_at
+FROM alp_demo_catalog.acme_hr.silver_employees_last_extract
+WHERE versions_in_file > 1
+ORDER BY employee_id
+LIMIT 20;
+
+-- COMMAND ----------
+
+-- Avant / après pour un employé dupliqué : toutes ses versions brutes, puis la ligne retenue
+WITH one_emp AS (
+  SELECT employee_id FROM alp_demo_catalog.acme_hr.silver_employees_last_extract
+  WHERE versions_in_file > 1 ORDER BY employee_id LIMIT 1
+)
+SELECT 'silver (toutes les versions)' AS source, s.employee_id, s.updated_at, s.department_id, s.job_title
+FROM alp_demo_catalog.acme_hr.silver_employees s
+JOIN alp_demo_catalog.acme_hr.silver_employees_last_extract l
+  ON s.employee_id = l.employee_id AND s._source_file = l._source_file
+WHERE s.employee_id IN (SELECT employee_id FROM one_emp)
+UNION ALL
+SELECT 'last_extract (rang 1)', employee_id, updated_at, department_id, job_title
+FROM alp_demo_catalog.acme_hr.silver_employees_last_extract
+WHERE employee_id IN (SELECT employee_id FROM one_emp)
+ORDER BY source, updated_at;
+
+-- COMMAND ----------
+
+-- Cohérence : pour les employés du dernier fichier, Auto CDC (gold) et la window function
+-- doivent retenir la même version. Attendu : 0 écart.
+SELECT count(*) AS ecarts
+FROM alp_demo_catalog.acme_hr.silver_employees_last_extract l
+JOIN alp_demo_catalog.acme_hr.gold_employees_current g ON l.employee_id = g.employee_id
+WHERE l.department_id <> g.department_id OR l.job_title <> g.job_title
+   OR l.updated_at <> g.updated_at;
 
 -- COMMAND ----------
 
@@ -36,13 +101,13 @@ GROUP BY age_bracket ORDER BY age_bracket;
 
 -- Employés ayant connu au moins un changement historisé
 SELECT employee_id FROM alp_demo_catalog.acme_hr.gold_employees_history
-GROUP BY employee_id HAVING count(*) > 1
+GROUP BY employee_id HAVING count(*) > 1;
 
 -- COMMAND ----------
 
 SELECT employee_id, department_id, contract_type, job_title, __START_AT, __END_AT
 FROM alp_demo_catalog.acme_hr.gold_employees_history
-WHERE employee_id = 'EMP0041944'
+WHERE employee_id = 'EMPFR0000010'  -- remplacer par un employee_id renvoyé par la requête ci-dessus
 ORDER BY __START_AT;
 
 
@@ -91,7 +156,7 @@ DESCRIBE DETAIL alp_demo_catalog.acme_hr.silver_absences;
 
 -- COMMAND ----------
 
-SELECT employee_id, last_name, department_name, business_unit, age_bracket,
+SELECT source_entity, employee_id, last_name, department_name, business_unit, age_bracket,
        seniority_years, absence_days_ytd
 FROM alp_demo_catalog.acme_hr.gold_employee_360
 ORDER BY absence_days_ytd DESC

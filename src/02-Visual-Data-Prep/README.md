@@ -8,6 +8,10 @@ Les **agrégats de consommation** sont construits **sans code**, dans un **Visua
 voit l'aperçu des données à chaque étape et publie des **Materialized Views** gouvernées par Unity
 Catalog. Un opérateur **AI Function** (`ai_classify`) classe les motifs d'absence saisis en texte libre.
 
+> Les tables sources contiennent les **deux filiales** (FR et BE) : les agrégats les couvrent
+> automatiquement. Pour comparer les filiales, ajouter `source_entity` au *group by* des opérateurs
+> Aggregate (optionnel ; la recette fournie ne le fait pas).
+
 | Sortie (Materialized View) | Construite avec |
 |---|---|
 | `gold_headcount_by_department` | Source → Filter → Prepare (Formula) → Aggregate → Output |

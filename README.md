@@ -4,7 +4,8 @@ Asset de démonstration pour **faire monter en compétence les équipes HR Data 
 Spark Declarative Pipelines (SDP)**. Il construit, de bout en bout et avec des **données HR
 synthétiques**, une **vue 360° des employés** (*HR 360*) :
 
-> extraits du SIRH déposés dans un **Volume Unity Catalog** → ingestion **Auto Loader**
+> extraits du SIRH de **deux filiales** déposés chacun dans son **Volume Unity Catalog** → ingestion
+> **Auto Loader** et concaténation par **Append Flows**
 > → **Spark Declarative Pipeline** (bronze → silver → gold) → agrégats **no-code** dans un **Visual
 > Data Prep** (avec **IA**) → **Materialized Views**, le tout gouverné par **Unity Catalog**
 > et déployé par un **Databricks Asset Bundle**.
@@ -20,9 +21,11 @@ fonctionnalité SDP dans un scénario métier HR réaliste.
 | Fonctionnalité SDP | Où | Rôle dans le pipeline (bronze→silver→gold) |
 |---|---|---|
 | **Streaming Table** + **Auto Loader** (`STREAM read_files`) | `bronze_employees`, `bronze_absences` | Ingestion des données brutes — bronze |
+| **Append Flows** (`CREATE FLOW … INSERT INTO`) | `bronze_employees`, `bronze_absences` | Concaténation de 2 sources de même structure (filiales FR et BE, 2 Volumes) — bronze |
 | **Expectations** (contrôles qualité déclaratifs) | `silver_employees`, `silver_absences` | Contrôles qualité — silver |
 | Colonnes calculées (`age_bracket`, `seniority_years`) + join référentiel | `silver_employees` | Préparation & enrichissement — silver |
-| **Auto CDC — SCD Type 1** (dernière version / employé) | `gold_employees_current` | Déduplication / dernière valeur — gold |
+| **Window functions** (`ROW_NUMBER`, `COUNT OVER`, `LAG`) dans une **Materialized View** | `silver_employees_last_extract` | Dernière ligne par employé dans le dernier fichier livré — silver |
+| **Auto CDC — SCD Type 1** (dernière version / employé, `SEQUENCE BY STRUCT(extract_ts, updated_at)`) | `gold_employees_current` | Déduplication incrémentale / dernière valeur — gold |
 | **Auto CDC — SCD Type 2** (historique mobilité) | `gold_employees_history` | Historisation — gold |
 | **Materialized View** (résultat stocké, rafraîchi par le pipeline) | `gold_employee_360` | Vue 360° employé exposée aux consommateurs — gold |
 | **`CLUSTER BY AUTO`** (liquid clustering automatique) | toutes les tables du pipeline | Performance sans réglage manuel |
@@ -30,22 +33,25 @@ fonctionnalité SDP dans un scénario métier HR réaliste.
 | **AI Function** `ai_classify` (no-code) | `gold_absence_reasons_by_department` | Classement IA des motifs d'absence en texte libre |
 | **Job** DAB (pipeline → Visual Data Prep) | `hr_360_job` | Orchestration de bout en bout |
 
-Scénario : **Employés + Absences + Départements** (effectifs, pyramide des âges, mixité,
-absentéisme, motifs d'absence).
+Scénario : deux filiales, **ACME France** et **ACME Belgique**, livrent chacune leurs extraits
+**Employés + Absences** (même structure) dans leur propre stockage ; référentiel **Départements**
+partagé (effectifs, pyramide des âges, mixité, absentéisme, motifs d'absence).
 
 ## Architecture
 
 ![Architecture HR 360 — Volume UC → Auto Loader → bronze → silver (Expectations) → gold SDP (Auto CDC SCD1/SCD2, Materialized View vue 360°) → Visual Data Prep no-code (Materialized Views + AI Function ai_classify) → consommation gouvernée par Unity Catalog](docs/hr360-architecture.png)
 
 ```
-Volume UC  /Volumes/alp_demo_catalog/acme_hr/landing/
-   ├── employees/   extraits master employés (JSONL, identifiants stables)
-   └── absences/    événements d'absence (JSONL)
-        │  Auto Loader
-        ▼
+Volume UC landing_fr (ACME France)        Volume UC landing_be (ACME Belgique)
+   ├── employees/  (JSONL)                    ├── employees/  (JSONL, même structure)
+   └── absences/   (JSONL)                    └── absences/   (JSONL)
+        │  Auto Loader · flow *_fr                  │  Auto Loader · flow *_be
+        └──────────────────┬────────────────────────┘
+                           ▼  Append Flows (concaténation, colonne source_entity)
 BRONZE  bronze_employees · bronze_absences                     (streaming tables)
         ▼  nettoyage, typage, colonnes calculées, expectations, join acme_hr.departments
 SILVER  silver_employees · silver_absences                     (streaming tables + expectations)
+        silver_employees_last_extract   (materialized view · ROW_NUMBER / LAG : dernière livraison)
         ▼
 GOLD    gold_employees_current        (Auto CDC SCD1 — état courant)
         gold_employees_history        (Auto CDC SCD2 — historique)
@@ -57,7 +63,7 @@ GOLD    gold_employees_current        (Auto CDC SCD1 — état courant)
 ```
 
 Catalog `alp_demo_catalog` · schéma unique `acme_hr` · référentiel `departments` ·
-données brutes dans le Volume `alp_demo_catalog.acme_hr.landing`. Tables préfixées par couche
+données brutes dans les Volumes `alp_demo_catalog.acme_hr.landing_fr` et `landing_be`. Tables préfixées par couche
 (`bronze_` / `silver_` / `gold_`). Les autres démos auront leur propre schéma dans ce catalog.
 
 ## Prérequis
@@ -69,26 +75,35 @@ Tout se fait **dans l'UI du workspace Databricks** : aucun outil à installer en
   (à adapter à votre catalog dans `databricks.yml` et les notebooks).
 - Le repo cloné dans un **Git folder** : **+ New → Git folder**, URL de ce repo, branche `main`.
 
-> Le stockage est un **Volume Unity Catalog** : pas de bucket, de rôle IAM ou de credential à
-> provisionner. Le Volume vit dans le compte de votre workspace et il est gouverné par UC.
+> Le stockage, ce sont des **Volumes Unity Catalog** (un par filiale) : pas de bucket, de rôle IAM
+> ou de credential à provisionner. En production, chaque Volume pourrait être un Volume externe
+> posé sur le bucket de la filiale ; le pipeline ne change pas.
 
 ## Déroulé (pas à pas)
 
-### 1. Setup Unity Catalog (schéma + Volume) & master data
+> **Vous venez d'une version précédente de la démo** (un seul Volume `landing`) ? Le schéma des
+> données a changé : supprimez l'ancien Volume `landing` (ou tout le schéma `acme_hr`), rejouez les
+> étapes 1 et 2, puis lancez le pipeline en **full refresh** à l'étape 3.
+
+### 1. Setup Unity Catalog (schéma + Volumes) & master data
 Dans le Git folder, ouvrir le notebook `src/00-Utiles/00-MasterData-build` et faire **Run all**. Il crée
-le schéma `acme_hr`, le **Volume** `alp_demo_catalog.acme_hr.landing` (sous-dossiers `employees/`,
-`absences/`) qui recevra les extraits bruts, et le référentiel `alp_demo_catalog.acme_hr.departments`.
+le schéma `acme_hr`, les **Volumes** `landing_fr` et `landing_be` (un par filiale, sous-dossiers
+`employees/` et `absences/`) et le référentiel `alp_demo_catalog.acme_hr.departments`.
 
 ### 2. Générer et charger les données brutes dans le Volume
-Ouvrir le notebook `src/00-Utiles/01-Generate-HR-Data` et faire **Run all**. Widgets :
+Ouvrir le notebook `src/00-Utiles/01-Generate-HR-Data` et faire **Run all** **deux fois**, une par
+filiale. Widgets :
+- `entity` = **`FR`** au premier run, puis **`BE`** au second (par exemple 50 000 puis 10 000 employés) ;
 - `mode` = **`seed`** : charge initiale, 50 000 employés et 12 mois d'absences par défaut (widget `employees`) ;
 - `bad_records` = **`yes`** (défaut) : ajoute quelques lignes volontairement non conformes pour voir
   les Expectations en action.
 
-Le notebook écrit les extraits JSONL **directement dans le Volume** (`.../landing/employees|absences/`)
-et garde le roster dans `.../landing/_state/roster.json`, pour que les identifiants restent stables
-entre les runs (indispensable pour le CDC / SCD). Vérification : **Catalog Explorer →
-`alp_demo_catalog` → `acme_hr` → Volumes → `landing`**.
+Le notebook écrit les extraits JSONL **directement dans le Volume de la filiale**
+(`.../landing_fr/…` ou `.../landing_be/…`) et garde un roster par filiale dans `_state/roster.json`,
+pour que les identifiants (`EMPFR…`, `EMPBE…`) restent stables entre les runs. Chaque extrait contient
+aussi environ 2 % d'employés en plusieurs versions (corrections dans la journée, `updated_at`) : c'est
+la matière de l'exemple de fonction de fenêtre. Vérification : **Catalog Explorer →
+`alp_demo_catalog` → `acme_hr` → Volumes**.
 
 ### 3. Déployer et lancer le pipeline (UI du bundle)
 Le pipeline est décrit par le **bundle** (`databricks.yml` et `resources/hr_pipeline_dlt.pipeline.yml`) ;

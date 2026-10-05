@@ -9,14 +9,19 @@
 # MAGIC Générateur de données HR synthétiques, pensé pour être exécuté **directement dans le workspace**
 # MAGIC (Git folder) — support de formation.
 # MAGIC
-# MAGIC - **Widgets** de paramétrage (`mode`, `employees`, `catalog`, `schema`, `bad_records`).
-# MAGIC - Écrit les extraits JSONL **directement dans le Volume UC** (`.../landing/employees|absences/`).
-# MAGIC - Persiste le **roster dans le Volume** (`.../landing/_state/roster.json`) pour garder des identifiants
-# MAGIC   stables entre les runs → indispensable pour démontrer le CDC / SCD (mode `increment`).
+# MAGIC - **Widgets** de paramétrage (`entity`, `mode`, `employees`, `catalog`, `schema`, `bad_records`).
+# MAGIC - **Deux filiales** : `entity = FR` (ACME France) écrit dans le Volume `landing_fr`, `entity = BE`
+# MAGIC   (ACME Belgique) dans `landing_be`. Même structure de fichiers, identifiants distincts
+# MAGIC   (`EMPFR…` / `EMPBE…`). Lancer le notebook une fois par filiale (ex. FR 50 000, BE 10 000 employés).
+# MAGIC - Écrit les extraits JSONL **directement dans le Volume UC** (`.../landing_xx/employees|absences/`).
+# MAGIC - Persiste le **roster de chaque filiale dans son Volume** (`.../landing_xx/_state/roster.json`) pour
+# MAGIC   garder des identifiants stables entre les runs → indispensable pour le CDC / SCD (mode `increment`).
+# MAGIC - Chaque extrait contient quelques **doublons intra-fichier** : ~2 % des employés ont 2 ou 3 lignes
+# MAGIC   (versions intermédiaires corrigées dans la journée, horodatées par `updated_at`). C'est la matière
+# MAGIC   de l'exemple « dernière ligne par employé » (window function `ROW_NUMBER`).
 # MAGIC
-# MAGIC > Prérequis : le schéma + le Volume `landing` existent (voir `00-MasterData-build.py`).
-# MAGIC > Le pipeline lit `.../landing/employees` et `.../landing/absences` ; le sous-dossier `_state/`
-# MAGIC > n'est pas ingéré.
+# MAGIC > Prérequis : le schéma + les Volumes `landing_fr` / `landing_be` existent (voir `00-MasterData-build.py`).
+# MAGIC > Le pipeline lit `employees/` et `absences/` de chaque Volume ; le sous-dossier `_state/` n'est pas ingéré.
 
 # COMMAND ----------
 
@@ -32,6 +37,7 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
+dbutils.widgets.dropdown("entity", "FR", ["FR", "BE"], "Filiale (FR = ACME France, BE = ACME Belgique)")
 dbutils.widgets.dropdown("mode", "seed", ["seed", "increment"], "Mode")
 dbutils.widgets.text("employees", "50000", "Nb employés (seed)")
 dbutils.widgets.text("catalog", "alp_demo_catalog", "Catalog")
@@ -40,15 +46,18 @@ dbutils.widgets.text("schema", "acme_hr", "Schema")
 # (activé par défaut pour la démo ; passer à "no" pour des extraits propres).
 dbutils.widgets.dropdown("bad_records", "yes", ["no", "yes"], "Injecter des enreg. non conformes ?")
 
+entity = dbutils.widgets.get("entity")
 mode = dbutils.widgets.get("mode")
 n_employees = int(dbutils.widgets.get("employees"))
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 inject_bad = dbutils.widgets.get("bad_records") == "yes"
 
-VOLUME_ROOT = f"/Volumes/{catalog}/{schema}/landing"
+# Chaque filiale a son propre « bucket » (Volume UC) et son propre préfixe d'identifiant.
+VOLUME_ROOT = f"/Volumes/{catalog}/{schema}/landing_{entity.lower()}"
 STATE_PATH = f"{VOLUME_ROOT}/_state/roster.json"
-print(f"mode={mode} | employees={n_employees} | cible={VOLUME_ROOT}")
+ID_PREFIX = f"EMP{entity}"  # EMPFR0000001 / EMPBE0000001
+print(f"entity={entity} | mode={mode} | employees={n_employees} | cible={VOLUME_ROOT}")
 
 # COMMAND ----------
 
@@ -69,10 +78,12 @@ JOB_TITLES = [
     "Technicien", "Ingénieur", "Chef de projet", "Analyste", "Responsable",
     "Chargé d'affaires", "Gestionnaire", "Directeur", "Consultant", "Opérateur",
 ]
-WORK_LOCATIONS = [
-    "Paris La Défense", "Lyon Part-Dieu", "Lille", "Bordeaux", "Marseille",
-    "Strasbourg", "Toulouse", "Bruxelles",
-]
+WORK_LOCATIONS = {
+    "FR": ["Paris La Défense", "Lyon Part-Dieu", "Lille", "Bordeaux", "Marseille", "Strasbourg", "Toulouse"],
+    "BE": ["Bruxelles", "Anvers", "Liège", "Gand", "Namur"],
+}[entity]
+# Part des employés qui apparaissent plusieurs fois dans un même extrait (corrections intra-journée).
+INTRA_FILE_DUP_RATE = 0.02
 ABSENCE_TYPES = [
     ("Congés payés", 30), ("Maladie", 25), ("RTT", 20),
     ("Formation", 12), ("Congé maternité", 5), ("Congé sans solde", 8),
@@ -110,8 +121,9 @@ ABSENCE_COMMENTS = {
 }
 
 fake = Faker("fr_FR")
-Faker.seed(42)
-random.seed(42)
+SEED = {"FR": 42, "BE": 43}[entity]  # graine différente par filiale : des données distinctes
+Faker.seed(SEED)
+random.seed(SEED)
 
 
 def _birth_hire_dates():
@@ -129,14 +141,14 @@ def build_roster(n):
         last = fake.last_name()
         birth_date, hire_date = _birth_hire_dates()
         roster.append({
-            "employee_id": f"EMP{i:07d}",
+            "employee_id": f"{ID_PREFIX}{i:07d}",
             "first_name": first, "last_name": last, "gender": gender,
             "birth_date": birth_date, "hire_date": hire_date,
             "department_id": random.choice(DEPARTMENT_IDS),
             "job_title": random.choice(JOB_TITLES),
             "contract_type": random.choices(CONTRACT_TYPES)[0],
             "work_location": random.choice(WORK_LOCATIONS),
-            "manager_id": f"EMP{random.randint(1, max(1, n // 20)):07d}",
+            "manager_id": f"{ID_PREFIX}{random.randint(1, max(1, n // 20)):07d}",
             "email": f"{first.lower()}.{last.lower()}@acme-demo.com".replace(" ", "").replace("'", ""),
             "fte": random.choice([1.0, 1.0, 1.0, 0.8, 0.5]),
             "status": "Active",
@@ -155,21 +167,21 @@ def mutate_roster(roster):
     for emp in random.sample(roster, k=max(1, len(roster) // 100)):            # CDD/Intérim -> CDI
         if emp["contract_type"] in ("CDD", "Intérim"):
             emp["contract_type"] = "CDI"
-    next_id = max(int(e["employee_id"][3:]) for e in roster) + 1              # embauches
+    next_id = max(int(e["employee_id"][len(ID_PREFIX):]) for e in roster) + 1  # embauches
     for j in range(random.randint(5, 20)):
         gender = random.choice(["F", "M"])
         first = fake.first_name_female() if gender == "F" else fake.first_name_male()
         last = fake.last_name()
         birth_date, _ = _birth_hire_dates()
         roster.append({
-            "employee_id": f"EMP{next_id + j:07d}",
+            "employee_id": f"{ID_PREFIX}{next_id + j:07d}",
             "first_name": first, "last_name": last, "gender": gender,
             "birth_date": birth_date, "hire_date": dt.date.today().isoformat(),
             "department_id": random.choice(DEPARTMENT_IDS),
             "job_title": random.choice(JOB_TITLES),
             "contract_type": random.choices(CONTRACT_TYPES)[0],
             "work_location": random.choice(WORK_LOCATIONS),
-            "manager_id": f"EMP{random.randint(1, len(roster) // 20):07d}",
+            "manager_id": f"{ID_PREFIX}{random.randint(1, len(roster) // 20):07d}",
             "email": f"{first.lower()}.{last.lower()}@acme-demo.com".replace(" ", "").replace("'", ""),
             "fte": 1.0, "status": "Active",
         })
@@ -177,17 +189,36 @@ def mutate_roster(roster):
 
 
 def employee_extract(roster, extract_date, extract_ts):
-    """Un enregistrement master par employé.
+    """Un enregistrement master par employé, plus quelques doublons intra-fichier.
 
     - `extract_date` : jour métier de l'extrait (DATE, pour l'affichage).
-    - `extract_ts`   : instant précis de l'extraction (TIMESTAMP) = **clé de séquence CDC**.
-      On séquence le CDC par un timestamp monotone (et non par la date) pour que deux extraits
-      produits le MÊME jour restent strictement ordonnés (indispensable en atelier).
+    - `extract_ts`   : instant précis de l'extraction (TIMESTAMP), identique pour tout le fichier.
+      Il ordonne les extraits entre eux (deux extraits produits le MÊME jour restent ordonnés).
+    - `updated_at`   : instant de la modification de la ligne dans le SIRH. Il ordonne les versions
+      d'un même employé DANS un fichier. Clé de séquence CDC = STRUCT(extract_ts, updated_at).
+
+    ~2 % des employés ont 1 ou 2 versions intermédiaires (poste ou département saisi par erreur,
+    corrigé plus tard dans la journée) avant leur version définitive, qui a le `updated_at` le plus
+    récent et correspond à l'état du roster.
     """
-    return [dict(emp, extract_date=extract_date, extract_ts=extract_ts) for emp in roster]
+    base_ts = dt.datetime.fromisoformat(extract_ts)
+    records = []
+    for emp in roster:
+        final = dict(emp, extract_date=extract_date, extract_ts=extract_ts, updated_at=extract_ts)
+        if random.random() < INTRA_FILE_DUP_RATE:
+            for hours_before in range(random.randint(1, 2), 0, -1):  # la plus ancienne d'abord
+                draft = dict(final, updated_at=(base_ts - dt.timedelta(hours=hours_before))
+                             .isoformat(timespec="microseconds"))
+                if random.random() < 0.5:
+                    draft["department_id"] = random.choice([d for d in DEPARTMENT_IDS if d != emp["department_id"]])
+                else:
+                    draft["job_title"] = random.choice([j for j in JOB_TITLES if j != emp["job_title"]])
+                records.append(draft)
+        records.append(final)
+    return records
 
 
-def absence_events(roster, start, end, n_events):
+def absence_events(roster, start, end, n_events, run_tag):
     events, active = [], [e for e in roster if e["status"] == "Active"]
     labels = [t for t, _ in ABSENCE_TYPES]
     weights = [w for _, w in ABSENCE_TYPES]
@@ -202,7 +233,7 @@ def absence_events(roster, start, end, n_events):
         }[atype]
         e = s + dt.timedelta(days=days - 1)
         events.append({
-            "absence_id": f"ABS-{s.year}-{k:08d}",
+            "absence_id": f"ABS-{entity}-{run_tag}-{k:07d}",  # unique par filiale et par run
             "employee_id": emp["employee_id"],
             "absence_type": atype,
             "start_date": s.isoformat(),
@@ -234,26 +265,26 @@ def bad_employees(extract_date, extract_ts):
     base = {
         "first_name": "Test", "last_name": "Qualite", "gender": "F",
         "department_id": "D001", "job_title": "Analyste", "contract_type": "CDI",
-        "work_location": "Paris La Défense", "manager_id": "EMP0000001",
+        "work_location": WORK_LOCATIONS[0], "manager_id": f"{ID_PREFIX}0000001",
         "email": "bad.record@acme-demo.com", "fte": 1.0, "status": "Active",
-        "extract_date": extract_date, "extract_ts": extract_ts,
+        "extract_date": extract_date, "extract_ts": extract_ts, "updated_at": extract_ts,
     }
     return [
         # plausible_age (trop jeune, ~10 ans) -> DROP ROW
-        {**base, "employee_id": "EMP9990001",
+        {**base, "employee_id": f"{ID_PREFIX}9990001",
          "birth_date": (today - dt.timedelta(days=10 * 365)).isoformat(), "hire_date": today.isoformat()},
         # plausible_age (trop âgé, ~81 ans ; né en 1945 donc valid_birth_date reste OK) -> DROP ROW
-        {**base, "employee_id": "EMP9990002", "birth_date": "1945-01-01", "hire_date": "1965-01-01"},
+        {**base, "employee_id": f"{ID_PREFIX}9990002", "birth_date": "1945-01-01", "hire_date": "1965-01-01"},
         # valid_birth_date (birth_date NULL) -> DROP ROW
         # (une date < 1940 déclencherait AUSSI plausible_age ; NULL isole la contrainte)
-        {**base, "employee_id": "EMP9990003", "birth_date": None, "hire_date": "1955-01-01"},
+        {**base, "employee_id": f"{ID_PREFIX}9990003", "birth_date": None, "hire_date": "1955-01-01"},
         # valid_hire_date (embauché avant la naissance) -> DROP ROW
-        {**base, "employee_id": "EMP9990004", "birth_date": "1990-01-01", "hire_date": "1985-01-01"},
+        {**base, "employee_id": f"{ID_PREFIX}9990004", "birth_date": "1990-01-01", "hire_date": "1985-01-01"},
         # known_department (département inconnu -> department_name NULL après join) -> WARN
-        {**base, "employee_id": "EMP9990005", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
+        {**base, "employee_id": f"{ID_PREFIX}9990005", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
          "department_id": "D999"},
         # valid_contract (type hors liste) -> WARN
-        {**base, "employee_id": "EMP9990006", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
+        {**base, "employee_id": f"{ID_PREFIX}9990006", "birth_date": "1985-01-01", "hire_date": "2010-01-01",
          "contract_type": "Freelance"},
     ]
 
@@ -261,20 +292,20 @@ def bad_employees(extract_date, extract_ts):
 def bad_absences():
     """4 absences volontairement non conformes (hors valid_absence_id qui est FAIL UPDATE)."""
     y = dt.date.today().year
-    base = {"employee_id": "EMP0000001", "absence_type": "Maladie",
+    base = {"employee_id": f"{ID_PREFIX}0000001", "absence_type": "Maladie",
             "event_timestamp": dt.datetime.now().isoformat()}
     return [
         # valid_employee (employee_id NULL) -> DROP ROW
-        {**base, "absence_id": f"ABS-BAD-{y}-00000001", "employee_id": None,
+        {**base, "absence_id": f"ABS-BAD-{entity}-{y}-00000001", "employee_id": None,
          "start_date": f"{y}-01-10", "end_date": f"{y}-01-12", "days": 3},
         # valid_dates (end_date avant start_date) -> DROP ROW
-        {**base, "absence_id": f"ABS-BAD-{y}-00000002",
+        {**base, "absence_id": f"ABS-BAD-{entity}-{y}-00000002",
          "start_date": f"{y}-01-20", "end_date": f"{y}-01-10", "days": 3},
         # positive_days (days = 0) -> DROP ROW
-        {**base, "absence_id": f"ABS-BAD-{y}-00000003",
+        {**base, "absence_id": f"ABS-BAD-{entity}-{y}-00000003",
          "start_date": f"{y}-01-10", "end_date": f"{y}-01-10", "days": 0},
         # known_type (absence_type NULL) -> WARN
-        {**base, "absence_id": f"ABS-BAD-{y}-00000004", "absence_type": None,
+        {**base, "absence_id": f"ABS-BAD-{entity}-{y}-00000004", "absence_type": None,
          "start_date": f"{y}-01-10", "end_date": f"{y}-01-12", "days": 3},
     ]
 
@@ -325,13 +356,13 @@ if mode == "seed":
     save_state(roster)
     emp_records = employee_extract(roster, today, extract_ts)
     abs_records = absence_events(roster, dt.date.today() - dt.timedelta(days=365), dt.date.today(),
-                                 n_employees * 3)
+                                 n_employees * 3, ts)
 else:  # increment
     print("[INCREMENT] Nouvel extrait employés (changements) + nouvelles absences…")
     roster = mutate_roster(load_state())
     save_state(roster)
     emp_records = employee_extract(roster, today, extract_ts)
-    abs_records = absence_events(roster, dt.date.today() - dt.timedelta(days=14), dt.date.today(), 200)
+    abs_records = absence_events(roster, dt.date.today() - dt.timedelta(days=14), dt.date.today(), 200, ts)
 
 # Optionnel : quelques enregistrements non conformes pour illustrer les Expectations silver.
 if inject_bad:
@@ -344,6 +375,8 @@ if inject_bad:
 write_jsonl(emp_records, "employees", f"employees_{mode}_{ts}.json")
 write_jsonl(abs_records, "absences", f"absences_{mode}_{ts}.json")
 
+n_dups = len(emp_records) - len({r["employee_id"] for r in emp_records})
+print(f"[{entity}] {n_dups} lignes employés en doublon intra-fichier (versions intermédiaires).")
 print("\nTerminé. Relancez le pipeline pour ingérer les nouveaux fichiers (Auto Loader).")
 
 # COMMAND ----------

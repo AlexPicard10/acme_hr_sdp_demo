@@ -4,12 +4,13 @@ Ordre du graphe (le pipeline résout les dépendances automatiquement) :
 
 ```
 00-Data-Sources/
-  DLT-Raw-Employees.sql   -> bronze_employees   (Streaming Table + Auto Loader Volume UC)
-  DLT-Raw-Absences.sql    -> bronze_absences    (Streaming Table + Auto Loader Volume UC)
+  DLT-Raw-Employees.sql   -> bronze_employees   (Streaming Table + Auto Loader, 2 Append Flows : landing_fr + landing_be)
+  DLT-Raw-Absences.sql    -> bronze_absences    (Streaming Table + Auto Loader, 2 Append Flows : landing_fr + landing_be)
 
 01-Employees/
   DLT-Employees-Silver.sql -> silver_employees          (Streaming Table + Expectations + join départements)
-  DLT-Employees-Gold.sql   -> gold_employees_current    (Auto CDC — SCD Type 1, état courant)
+  DLT-Employees-Last-Extract.sql -> silver_employees_last_extract (Materialized View + window functions ROW_NUMBER / LAG)
+  DLT-Employees-Gold.sql   -> gold_employees_current    (Auto CDC — SCD Type 1, état courant, SEQUENCE BY STRUCT(extract_ts, updated_at))
                               gold_employees_history     (Auto CDC — SCD Type 2, historique mobilité)
 
 02-Absences/
@@ -26,4 +27,5 @@ le Visual Data Prep `../02-Visual-Data-Prep/`, qui lit les tables silver/gold pr
 SQL Warehouse).
 
 Fonctionnalités LDP illustrées : **Streaming Table**, **Auto Loader** (`STREAM read_files`),
-**Expectations**, **Auto CDC** (SCD Type 1 & 2), **Materialized View**, **CLUSTER BY AUTO**.
+**Append Flows** (concaténation multi-sources), **Expectations**, **window functions** dans une
+Materialized View, **Auto CDC** (SCD Type 1 & 2), **Materialized View**, **CLUSTER BY AUTO**.

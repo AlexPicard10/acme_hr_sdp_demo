@@ -3,8 +3,18 @@
 -- MAGIC ## 3 / Consolidation — Employés (Auto CDC, SCD Type 1)
 -- MAGIC #### Déduplication / dernière version : on ne garde que l'état courant par employé.
 -- MAGIC `CREATE FLOW … AS AUTO CDC INTO … STORED AS SCD TYPE 1` applique les changements et conserve, pour
--- MAGIC chaque `employee_id`, la **dernière valeur** (ordonnée par `extract_ts`, l'instant d'extraction). C'est l'**état
--- MAGIC courant** de référence : une ligne par employé, toujours à jour, alimentée par les extraits quotidiens.
+-- MAGIC chaque `employee_id`, la **dernière valeur**. C'est l'**état courant** de référence : une ligne par
+-- MAGIC employé, toujours à jour, alimentée par les extraits quotidiens des 2 filiales.
+-- MAGIC
+-- MAGIC **Ordre des versions : `SEQUENCE BY STRUCT(extract_ts, updated_at)`.** `extract_ts` ordonne les
+-- MAGIC fichiers entre eux ; `updated_at` départage les versions d'un même employé **dans** un fichier
+-- MAGIC (corrections intra-journée). Sans `updated_at`, ces doublons auraient la même séquence et le
+-- MAGIC résultat serait arbitraire.
+-- MAGIC
+-- MAGIC > C'est l'**équivalent streaming** d'un `ROW_NUMBER() OVER (PARTITION BY employee_id ORDER BY
+-- MAGIC > extract_ts DESC, updated_at DESC) = 1`, mais **incrémental** : chaque run ne traite que les
+-- MAGIC > nouvelles lignes, quel que soit le volume d'historique. La fonction de fenêtre explicite est
+-- MAGIC > montrée dans `silver_employees_last_extract` (fichier `DLT-Employees-Last-Extract`).
 
 -- COMMAND ----------
 
@@ -21,7 +31,7 @@ AS AUTO CDC INTO
   gold_employees_current
 FROM STREAM(silver_employees)
   KEYS (employee_id)
-  SEQUENCE BY extract_ts
+  SEQUENCE BY STRUCT(extract_ts, updated_at)
   STORED AS SCD TYPE 1;
 
 -- COMMAND ----------
@@ -33,6 +43,9 @@ FROM STREAM(silver_employees)
 -- MAGIC limite la création d'une nouvelle ligne d'historique aux seuls changements de mobilité
 -- MAGIC (département / contrat / poste) — utile pour l'analyse RH (mobilité interne, ancienneté au poste).
 -- MAGIC L'état courant se lit avec `WHERE __END_AT IS NULL`.
+-- MAGIC
+-- MAGIC > Une correction intra-journée (poste saisi par erreur puis corrigé) apparaît comme une version
+-- MAGIC > **très courte** dans l'historique : le SCD2 enregistre fidèlement tout ce que le SIRH a livré.
 
 -- COMMAND ----------
 
@@ -46,6 +59,6 @@ AS AUTO CDC INTO
   gold_employees_history
 FROM STREAM(silver_employees)
   KEYS (employee_id)
-  SEQUENCE BY extract_ts
+  SEQUENCE BY STRUCT(extract_ts, updated_at)
   STORED AS SCD TYPE 2
   TRACK HISTORY ON department_id, contract_type, job_title;
